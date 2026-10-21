@@ -22,14 +22,20 @@ import "server-only";
 
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 
-import { getAuthDb, authSchema } from "@/persistence/composition/auth-database";
+import { findSignInEligibility, getAuthDb, authSchema } from "@/persistence/composition/auth-database";
 import { createSmtpMailer } from "@/platform/mailer/server";
 import { serverEnv } from "@/platform/env/server";
 
 import { MAGIC_LINK_EMAIL_SUBJECT, renderMagicLinkEmail } from "./emails/magic-link-email";
+import { mayCreateAccount, mayReceiveMagicLink, parseBootstrapEmails } from "./sign-up-gate";
+
+/** decisions/0074: the error code the magic-link verify endpoint redirects to `/login` with
+ * when an address without an account or an invitation tries to create one. */
+export const SIGN_UP_NOT_ALLOWED_CODE = "SIGNUP_NOT_ALLOWED";
 
 /** Magic-link token lifetime (WEBAPP_TEMPLATE_SPEC.md §6.3). */
 export const MAGIC_LINK_EXPIRES_IN_SECONDS = 15 * 60;
@@ -48,6 +54,14 @@ const COOKIE_CACHE_MAX_AGE_SECONDS = 5 * 60;
  * reports a clear error - there is no outbox/retry for this path.
  */
 async function sendMagicLink({ email, url }: { email: string; url: string }): Promise<void> {
+  // decisions/0074: only members and invited addresses get a link. Anyone else is answered
+  // exactly like a member (no error, no different timing class worth hiding), just without mail.
+  const eligibility = await findSignInEligibility(email, new Date());
+  if (!mayReceiveMagicLink(email, eligibility, parseBootstrapEmails(serverEnv().AUTH_BOOTSTRAP_EMAILS))) {
+    console.info("[auth] magic link not sent: no account and no invitation for this address");
+    return;
+  }
+
   const mailer = createSmtpMailer();
   const { html, text } = await renderMagicLinkEmail({
     url,
@@ -105,6 +119,21 @@ function buildAuth() {
       // does not remove (a deployment with no trusted proxy in front of it at all).
       ipAddress: { ipAddressHeaders: ["x-vercel-forwarded-for", "x-real-ip", "x-forwarded-for"] },
       useSecureCookies: env.NODE_ENV === "production",
+    },
+    // decisions/0074: the hard guarantee behind the mail gate above. A magic link minted before an
+    // invitation was revoked, or any other path into user creation, still cannot create an
+    // account for an address that is neither invited nor a bootstrap address.
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => {
+            const eligibility = await findSignInEligibility(user.email, new Date());
+            if (!mayCreateAccount(user.email, eligibility, parseBootstrapEmails(env.AUTH_BOOTSTRAP_EMAILS))) {
+              throw new APIError("FORBIDDEN", { code: SIGN_UP_NOT_ALLOWED_CODE, message: "Sign-up requires an invitation." });
+            }
+          },
+        },
+      },
     },
     session: {
       expiresIn: SESSION_EXPIRES_IN_SECONDS,

@@ -13,7 +13,9 @@ Maintenance triggers:
 - A new rate-limited Better Auth endpoint needs a Server Action caller
   (decisions/0005: it MUST go through `getAuth().handler(request)`, never `auth.api.*`)
 - The IP header trust order (`ipAddressHeaders`) or the hosting/proxy setup changes
-Last verified: 2026-09-20, P6 review: hardened the IP header trust order (see "IP address
+Last verified: 2026-10-21, decisions/0074-sign-up-by-invitation-only.md: new accounts only for
+an invited address or one of `AUTH_BOOTSTRAP_EMAILS` (`server/sign-up-gate.ts`, checked in
+`sendMagicLink` and in the user-create database hook). Previously 2026-09-20, P6 review: hardened the IP header trust order (see "IP address
 trust" below); decisions/0005-better-auth-magic-link-drizzle-adapter.md is Accepted and
 immutable and did not originally specify this detail, so it is recorded here instead
 
@@ -24,6 +26,12 @@ decisions/0005-better-auth-magic-link-drizzle-adapter.md): the token is stored
 hashed, mailed via `src/platform/mailer` and the template in `server/emails/`, never by
 a third party. Rate limiting is database-backed (shared across serverless
 instances). Cookies stay host-only and `Secure` in production.
+
+Sign-up is by invitation only (decisions/0074-sign-up-by-invitation-only.md): an existing
+account gets its link, a new account is created only for an address with a pending,
+unexpired invitation or one listed in `AUTH_BOOTSTRAP_EMAILS` (the first admin of a fresh
+database). Anyone else gets the usual answer and no mail; the user-create hook throws
+`SIGNUP_NOT_ALLOWED` as the hard guarantee.
 
 Identity and session are all this owner manages. Tenants, memberships, roles and
 permissions are separate tables and use cases under `src/platform/access` (once a

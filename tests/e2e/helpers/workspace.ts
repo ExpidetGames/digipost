@@ -27,6 +27,23 @@ export async function createWorkspaceForUser(userId: string, name: string): Prom
   return workspace;
 }
 
+/** decisions/0074: a pending, unexpired invitation for `email`, inserted directly, so a spec can
+ * prove that an invited address may create an account through the real magic link. The token
+ * hash is random: the invitation link itself is never used by such a spec. */
+export async function createPendingInvitation(workspaceId: string, email: string, invitedByUserId: string): Promise<void> {
+  await ownerQuery(
+    `insert into public.workspace_invitations (workspace_id, email, token_hash, invited_by_user_id, expires_at)
+     values ($1, lower($2), md5(random()::text) || md5(random()::text), $3, now() + interval '7 days')`,
+    [workspaceId, email, invitedByUserId],
+  );
+}
+
+/** Sets the workspace's payment auto-confirm mode (decisions/0044) directly, e.g. "none" so a
+ * spec can confirm a deterministic suggestion by hand instead of seeing it booked automatically. */
+export async function setPaymentAutoConfirm(workspaceId: string, mode: "all" | "system" | "none"): Promise<void> {
+  await ownerQuery(`update public.workspaces set payment_auto_confirm = $2 where id = $1`, [workspaceId, mode]);
+}
+
 /** Adds an existing user to a workspace as a plain member - the same end state
  * `acceptInvitationAction` produces, done directly so a spec that only needs "a second real
  * member of this workspace" (e.g. the member-visibility tests in `finance.spec.ts`)
