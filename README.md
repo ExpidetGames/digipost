@@ -468,6 +468,7 @@ See `.env.example` for the authoritative, commented list; summarized here:
 | `DATABASE_URL_PUBLIC` | only if an unauthenticated public path needs it | `src/persistence/foundation/**` only |
 | `DATABASE_URL_MIGRATE` | yes | `scripts/db/*`, `drizzle.config.ts` only, never at request time |
 | `BETTER_AUTH_SECRET` | yes | `src/platform/auth` (via `src/platform/env`) |
+| `AUTH_BOOTSTRAP_EMAILS` | optional (first admin of a fresh database only; sign-up is otherwise by invitation, decisions/0074) | `src/platform/auth` (via `src/platform/env`) |
 | `SMTP_URL`, `MAIL_FROM` | yes | `src/platform/mailer` (via `src/platform/env`) |
 | `CRON_SECRET` | yes | `src/platform/api-pipeline/server/cron-auth.ts` (via `src/platform/env`) |
 | `S3_ENDPOINT` | optional | `src/platform/object-storage` (via `src/platform/env`) |

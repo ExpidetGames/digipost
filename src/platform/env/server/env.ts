@@ -49,6 +49,10 @@ const ServerEnv = z.object({
     .optional()
     .transform((value) => value === "true"),
   SENTRY_DSN: z.url().optional(),
+  // decisions/0074-sign-up-by-invitation-only.md: new accounts need a pending invitation. This
+  // comma-separated list is the one exception, for the first admin of a fresh database whom
+  // nobody can invite yet. Leave it empty once that admin exists.
+  AUTH_BOOTSTRAP_EMAILS: z.string().optional(),
   // Set only by the deploy workflow's build step (.github/workflows/deploy-production.yml,
   // WEBAPP_TEMPLATE_SPEC.md §13.4), never locally: the commit SHA being deployed, so
   // GET /api/health can report it and the post-deploy check can confirm the running

@@ -291,13 +291,14 @@
     "submit": "Anmeldelink senden",
     "submitPending": "Wird gesendet…",
     "sentHeading": "Bitte prüfen Sie Ihr Postfach",
-    "sentDescription": "Wir haben einen Anmeldelink an {email} gesendet. Klicken Sie darauf, um fortzufahren. Der Link ist 15 Minuten gültig und kann nur einmal verwendet werden.",
+    "sentDescription": "Falls für {email} ein Konto oder eine Einladung besteht, haben wir einen Anmeldelink gesendet. Klicken Sie darauf, um fortzufahren. Der Link ist 15 Minuten gültig und kann nur einmal verwendet werden.",
     "useDifferentEmail": "Andere E-Mail-Adresse verwenden",
     "errors": {
       "invalid_email": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
       "rate_limited": "Es wurden zu viele Anmeldelinks angefordert. Bitte warten Sie eine Minute und versuchen Sie es erneut.",
       "unknown": "Der Anmeldelink konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
       "INVALID_TOKEN": "Dieser Anmeldelink ist abgelaufen oder wurde bereits verwendet. Fordern Sie unten einen neuen an.",
+      "SIGNUP_NOT_ALLOWED": "Für diese E-Mail-Adresse gibt es kein Konto und keine offene Einladung. Bitten Sie ein Mitglied Ihres Teams, Sie einzuladen.",
       "auth_failed": "Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut."
     }
   },

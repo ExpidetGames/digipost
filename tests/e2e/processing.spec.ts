@@ -15,7 +15,8 @@ import { createTestPdfBuffer } from "./helpers/pdf-fixture";
 test(
   "uploads a Telekom invoice, it processes with the fake AI provider, and is found by search",
   { tag: "@smoke" },
-  async ({ page }) => {
+  // `adminUser`: a fast session with a real workspace, which every /dashboard/** page needs.
+  async ({ page, adminUser }) => {
     // Upload a document whose file name the fake OCR engine recognizes as a Telekom
     // invoice (`src/modules/documents/core/fake-ocr-engine.ts`).
     await page.goto("/dashboard/scan");
@@ -46,5 +47,6 @@ test(
     await page.getByLabel("Suche").fill("Telekom");
     await page.getByRole("button", { name: "Filtern" }).click();
     await expect(page.getByRole("link").filter({ hasText: "Telekom Deutschland" })).toBeVisible();
+    await expect(page.getByText(adminUser.workspace.name).first()).toBeVisible();
   },
 );
