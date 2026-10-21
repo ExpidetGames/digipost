@@ -20,6 +20,19 @@ vi.mock("@/platform/auth/server", () => ({
   getCurrentUser: async () => currentUser,
 }));
 
+// decisions/0070-several-workspaces-per-user.md: `createWorkspaceAction` and friends write the
+// active-workspace cookie, and `cookies()` only exists inside a real request. An in-memory jar
+// stands in for it, so the actions run unchanged and the test can read what they set.
+const cookieJar = new Map<string, string>();
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) => (cookieJar.has(name) ? { name, value: cookieJar.get(name)! } : undefined),
+    set: (name: string, value: string) => void cookieJar.set(name, value),
+    delete: (name: string) => void cookieJar.delete(name),
+  }),
+  headers: async () => new Headers(),
+}));
+
 const revalidatePathMock = vi.fn();
 vi.mock("next/cache", () => ({
   revalidatePath: (path: string) => revalidatePathMock(path),
@@ -67,6 +80,7 @@ function extractInviteToken(): string {
 
 beforeEach(() => {
   revalidatePathMock.mockClear();
+  cookieJar.clear();
   sendMailMock.mockClear();
 });
 
@@ -84,14 +98,18 @@ describe("workspaces onboarding and invitation flow (real Postgres, session mock
     expect(membership).toMatchObject({ role: "admin", workspace: { name: "Muster GmbH" } });
   });
 
-  it("rejects creating a second workspace for the same user", async () => {
+  // decisions/0070-several-workspaces-per-user.md replaced the old "one workspace per user"
+  // rule this test used to pin: a second workspace is allowed and becomes the active one.
+  it("lets the same user create a second workspace and makes it the active one", async () => {
     const founder = await createTestUser();
     currentUser = founder;
     await createWorkspaceAction({ name: "First Co", ...VALID_ADDRESS });
 
     const result = await createWorkspaceAction({ name: "Second Co", ...VALID_ADDRESS });
 
-    expect(result).toEqual({ status: "error", errorCode: "already_in_workspace" });
+    expect(result).toMatchObject({ status: "success", data: { name: "Second Co" } });
+    const secondId = result.status === "success" ? result.data.id : undefined;
+    expect([...cookieJar.values()]).toContain(secondId);
   });
 
   it("invites, sends the invitation e-mail, and lets the invitee accept", async () => {

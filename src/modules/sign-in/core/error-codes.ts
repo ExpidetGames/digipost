@@ -10,9 +10,11 @@ export type RequestErrorCode = (typeof REQUEST_ERROR_CODES)[number];
  * `errorCallbackURL` as `?error=…` (see `src/app/(auth)/login/page.tsx`, which passes
  * `errorCallbackURL: "/login"` when requesting the link). `INVALID_TOKEN` covers
  * both an expired and an already-used link - each token is consumed atomically on
- * first use, so Better Auth cannot tell the two apart.
+ * first use, so Better Auth cannot tell the two apart. `SIGNUP_NOT_ALLOWED`
+ * (decisions/0074) is thrown by `src/platform/auth/server/auth.ts`'s user-create hook for an
+ * address with neither an account nor a pending invitation.
  */
-export const CALLBACK_ERROR_CODES = ["INVALID_TOKEN", "auth_failed"] as const;
+export const CALLBACK_ERROR_CODES = ["INVALID_TOKEN", "SIGNUP_NOT_ALLOWED", "auth_failed"] as const;
 export type CallbackErrorCode = (typeof CALLBACK_ERROR_CODES)[number];
 
 /** Maps an arbitrary `?error=` query value to a known callback error code, never

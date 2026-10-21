@@ -111,8 +111,9 @@ Three groups. The runtime ones are validated lazily by `serverEnv()` (`src/platf
 | `APP_URL` | yes | `https://<your domain>` | No trailing slash. Absolute links, auth callbacks, e-mails. |
 | `NEXT_PUBLIC_APP_URL` | yes, also at build time | Same value as `APP_URL` | Inlined into the client bundle by `next build`. Must not be a Sensitive variable (section 5). |
 | `DATABASE_URL` | yes | Neon **pooled** host, role `app_runtime` | `sslmode=require`. |
-| `DATABASE_URL_PUBLIC` | optional | Neon pooled host, role `app_public` | Only if an unauthenticated public path needs it; `.env.example` sets it, `serverEnv()` accepts it absent. |
+| `DATABASE_URL_PUBLIC` | no, leave unset | | For role `app_public`, which no code path uses yet (`getPublicDb()` has no caller). Set it only once an unauthenticated public path reads the database. |
 | `BETTER_AUTH_SECRET` | yes | `openssl rand -base64 32` | At least 32 characters. Changing it signs everybody out. |
+| `AUTH_BOOTSTRAP_EMAILS` | first deploy only | Your own address | Sign-up is by invitation only (decisions/0074). This list may sign up without one, for the first admin. Empty it once that admin exists. |
 | `SMTP_URL` | yes | `smtps://<user>:<password>@<host>:465` | Provider-neutral (nodemailer). |
 | `MAIL_FROM` | yes | `Digipost <no-reply@<your domain>>` | The domain needs SPF, DKIM and DMARC (section 7). |
 | `CRON_SECRET` | yes | `openssl rand -base64 32` | Vercel sends it as `Authorization: Bearer ...` to the cron routes. At least 32 characters. |
@@ -263,28 +264,26 @@ Plan: **Pro** (a Hobby plan allows only daily crons and fewer deployment feature
 1. Create a project in an **EU region** (`aws-eu-central-1`, Frankfurt), Postgres 18 if offered, otherwise the
    newest. Neon's default collation is `C`, which is what the test stack matches.
 2. **Two hosts per endpoint**: the *direct* host (`ep-...`) and the *pooled* host (`ep-...-pooler`). The
-   application (`DATABASE_URL`, `DATABASE_URL_PUBLIC`) uses the pooled host with `sslmode=require`. The migration
+   application (`DATABASE_URL`) uses the pooled host with `sslmode=require`. The migration
    (`DATABASE_URL_MIGRATE`) must use the **direct** host: `scripts/db/migrate.mjs` holds a session advisory lock
    for the whole run, which a transaction-mode pooler does not keep.
 3. **The three roles** (decisions/0004-three-database-roles.md, `scripts/db/bootstrap-roles.mjs`):
    - the **owner**: Neon's default owner role of the database (its name does not matter, `grants.sql` applies to
      whichever role runs it). Its direct URL is `DATABASE_URL_MIGRATE`.
-   - `app_runtime` (DML only) and `app_public` (the narrow unauthenticated paths): created once, before the first
-     migration, by `pnpm db:bootstrap` from your own machine. Invent a password for each, build the three URLs,
-     and pass them as shell variables, not a file:
+   - `app_runtime` (DML only): created once, before the first migration, by `pnpm db:bootstrap` from your own
+     machine. Invent a password, build the two URLs, and pass them as shell variables, not a file. `app_public`
+     is not needed (no code path uses it); `db:bootstrap` skips it while `DATABASE_URL_PUBLIC` is unset:
 
      ```sh
      read -rs -p 'owner direct URL: ' DATABASE_URL_MIGRATE; export DATABASE_URL_MIGRATE; echo
      read -rs -p 'runtime pooled URL: ' DATABASE_URL; export DATABASE_URL; echo
-     read -rs -p 'public pooled URL: ' DATABASE_URL_PUBLIC; export DATABASE_URL_PUBLIC; echo
      pnpm db:bootstrap --remote --expect-host=<the direct host>
-     unset DATABASE_URL_MIGRATE DATABASE_URL DATABASE_URL_PUBLIC
+     unset DATABASE_URL_MIGRATE DATABASE_URL
      ```
 
      It is idempotent and never overwrites an existing role's password. Do not create a `.env.local` with
      production values for this (AGENTS.md, "Database Rules").
-4. Put the same three URLs into Infisical (`/app` `DATABASE_URL` and `DATABASE_URL_PUBLIC`, `/ci`
-   `DATABASE_URL_MIGRATE`), and the direct host name into `/ci` `MIGRATE_EXPECTED_HOST`.
+4. Put the same two URLs into Infisical (`/app` `DATABASE_URL`, `/ci` `DATABASE_URL_MIGRATE`), and the direct host name into `/ci` `MIGRATE_EXPECTED_HOST`.
 5. **Backups are a requirement, not yet implemented as automation.** A business that keeps its incoming mail
    here must be able to restore it. Before real customers: set Neon's point-in-time-restore history retention to
    the longest window your plan offers (at least seven days), and add a scheduled logical dump (`pg_dump` with the
@@ -332,7 +331,7 @@ marked drafts.
 Bring the pieces up in this order, so each can be checked alone.
 
 1. **Local sanity**: on `development`, `pnpm verify` and `pnpm test:docker` pass.
-2. **Neon**: create the project, the roles and the three URLs (section 6). Do not migrate by hand; the pipeline
+2. **Neon**: create the project, the runtime role and the two URLs (section 6). Do not migrate by hand; the pipeline
    does it.
 3. **Infisical**: create the project, folders `/ci` and `/app`, all keys of section 2, the machine identity and
    its role, and the Secret Sync (section 4). Check in the dashboard that the sync shows *synced*, and in the
@@ -347,8 +346,10 @@ Bring the pieces up in this order, so each can be checked alone.
 7. **Read the first run**: `fresh`, `migrate` (it should print the number of migrations it applied), `stage`
    (the summary shows the staged address), `health`, `promote`. If `health` fails, open the staged address in a
    browser with the bypass header (or temporarily view it in the Vercel dashboard) and read the runtime logs.
-8. **Smoke test production by hand**: sign in with a real mail address, create a workspace, upload a PDF, check
-   it arrives in the inbox as `uploaded` (processing then fails with `ai_not_configured` until the DPA is done).
+8. **Smoke test production by hand**: sign in with the address you put into `AUTH_BOOTSTRAP_EMAILS` (sign-up is
+   by invitation only, decisions/0074), create a workspace, invite everyone else from the settings, then empty
+   `AUTH_BOOTSTRAP_EMAILS` in Infisical. Then upload a PDF, check
+   it is processed (with `MISTRAL_API_KEY` set, decisions/0073; without it processing fails with `ai_not_configured`).
    Confirm `/api/health` on the production domain answers `{ ok: true, version: "<short sha>" }`.
 9. **Cron**: in the Vercel dashboard (Settings, Cron Jobs) check both jobs are listed, and after two hours that
    `process-jobs` ran with status 200. A 401 means `CRON_SECRET` is missing from the project's variables.

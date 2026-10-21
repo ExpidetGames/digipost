@@ -13,8 +13,11 @@
 // application code may import.
 import "server-only";
 
+import { and, gt, isNull, sql } from "drizzle-orm";
+
 import { getDb, type AppDb } from "@/persistence/foundation/client";
 import * as authSchema from "@/persistence/schema/auth";
+import { workspaceInvitations } from "@/persistence/schema/workspaces";
 
 /**
  * The runtime connection (`app_runtime`, `DATABASE_URL`) - the same one every other
@@ -36,3 +39,29 @@ export function getAuthDb(): AppDb {
  * never needs the individual table bindings itself.
  */
 export { authSchema };
+
+/** decisions/0074: what the sign-in gate needs to know about an e-mail address. */
+export type SignInEligibility = { hasAccount: boolean; hasPendingInvitation: boolean };
+
+/**
+ * decisions/0074-sign-up-by-invitation-only.md: whether `email` already has an account, and
+ * whether any workspace holds a pending, unexpired invitation for it. Both compared
+ * case-insensitively. A read of `src/modules/workspaces`' own table, never a write (the
+ * "read via a join" side of the owner rule); it lives here because `src/platform/auth` may only
+ * import this seam.
+ */
+export async function findSignInEligibility(email: string, now: Date): Promise<SignInEligibility> {
+  const db = getDb();
+  const normalized = email.trim().toLowerCase();
+  const [account] = await db
+    .select({ id: authSchema.user.id })
+    .from(authSchema.user)
+    .where(sql`lower(${authSchema.user.email}) = ${normalized}`)
+    .limit(1);
+  const [invitation] = await db
+    .select({ id: workspaceInvitations.id })
+    .from(workspaceInvitations)
+    .where(and(sql`lower(${workspaceInvitations.email}) = ${normalized}`, isNull(workspaceInvitations.acceptedAt), gt(workspaceInvitations.expiresAt, now)))
+    .limit(1);
+  return { hasAccount: account !== undefined, hasPendingInvitation: invitation !== undefined };
+}

@@ -9,7 +9,8 @@
 // or a counterparty (`finance.read` is admin-only, decisions/0024-accounts-and-transactions.md).
 import { expect, test } from "./helpers/fixtures";
 import { createTestUser, loginAs } from "./helpers/auth";
-import { addMemberToWorkspace } from "./helpers/workspace";
+import { runPaymentMatchingNow } from "./helpers/jobs";
+import { addMemberToWorkspace, setPaymentAutoConfirm } from "./helpers/workspace";
 import { deleteUserById, uniqueEmail } from "./helpers/db";
 import { createTestPdfBuffer } from "./helpers/pdf-fixture";
 
@@ -43,6 +44,10 @@ test(
   { tag: "@smoke" },
   async ({ page, browser, baseURL, adminUser }) => {
 
+    // The default auto-confirm mode ("system", decisions/0044) would book this deterministic
+    // name-and-amount match by itself; "none" leaves it as a suggestion to confirm by hand.
+    await setPaymentAutoConfirm(adminUser.workspace.id, "none");
+
     // 1. The invoice (incoming, 49.99 EUR, sender "Telekom Deutschland GmbH").
     await page.goto("/dashboard/scan");
     const pdfBytes = await createTestPdfBuffer();
@@ -53,17 +58,16 @@ test(
     await expect(page.getByText("Verarbeitet", { exact: true })).toBeVisible({ timeout: 20_000 });
     const invoiceUrl = page.url();
 
-    // 2. The camt.053 statement, imported and matched in the same request cascade
-    // (`documents-use-cases.ts`'s camt053 branch enqueues `import-account-transactions`,
-    // which in turn enqueues `match-payments` - `jobs-use-cases.ts`'s `runDue` drains the
-    // whole cascade in one call, decisions/0016's own precedent `tests/e2e/finance.spec.ts`
-    // already relies on for the camt-import half of this same chain).
+    // 2. The camt.053 statement: `documents-use-cases.ts`'s camt053 branch enqueues
+    // `import-account-transactions`, which schedules `match-payments` behind the matching
+    // debounce (decisions/0041), so the spec runs that job right after the import.
     await page.goto("/dashboard/scan");
     await page.setInputFiles('input[type="file"]', { name: "kontoauszug.xml", mimeType: "application/xml", buffer: xmlBuffer() });
     await expect(page.getByText("kontoauszug.xml")).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: "Hochladen" }).click();
     await expect.poll(() => new URL(page.url()).pathname, { timeout: 20_000 }).toMatch(/^\/dashboard\/documents\/.+/);
     await expect(page.getByText("Importierte Daten")).toBeVisible({ timeout: 20_000 });
+    await runPaymentMatchingNow(adminUser.workspace.id, baseURL!);
 
     // 3. "Zuordnung" shows the unmatched transaction with its suggestion - confirm it there.
     await page.goto("/dashboard/finance/zuordnung");

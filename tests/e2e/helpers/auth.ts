@@ -158,8 +158,8 @@ async function waitForLinkInMailTo(address: string, linkPattern: RegExp, timeout
  * verify URL it contains (`src/platform/auth/server/emails/magic-link-email.tsx` puts
  * the raw link in the plain-text part, on its own line).
  */
-export async function magicLinkFor(email: string): Promise<string> {
-  return waitForLinkInMailTo(email, /https?:\/\/\S*\/api\/auth\/magic-link\/verify\?\S+/);
+export async function magicLinkFor(email: string, timeoutMs?: number): Promise<string> {
+  return waitForLinkInMailTo(email, /https?:\/\/\S*\/api\/auth\/magic-link\/verify\?\S+/, timeoutMs);
 }
 
 /**

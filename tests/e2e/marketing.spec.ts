@@ -43,7 +43,7 @@ test("how it works, features, and the comparison section render", async ({ page 
 
   await expect(page.getByRole("heading", { name: "Funktionen" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Durchsuchbare PDFs" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Automatische Kategorisierung" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Automatische Erkennung der Dokumentart" })).toBeVisible();
 
   await expect(page.getByRole("heading", { name: "Software statt Scan-Dienstleister" })).toBeVisible();
 });

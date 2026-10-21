@@ -31,8 +31,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { AUTH_COOKIE_RE, SESSION_COOKIE, createTestUser, loginAs, magicLinkFor, requestMagicLink } from "../helpers/auth";
-import { clearMagicLinkRateLimit, deleteUserById, findUserIdByEmail, uniqueEmail } from "../helpers/db";
-import { createWorkspaceForUser, deleteWorkspaceById } from "../helpers/workspace";
+import { clearMagicLinkRateLimit, createDbUser, deleteUserById, findUserIdByEmail, uniqueEmail } from "../helpers/db";
+import { createPendingInvitation, createWorkspaceForUser, deleteWorkspaceById } from "../helpers/workspace";
 
 test.describe.configure({ mode: "serial" });
 
@@ -143,7 +143,7 @@ test("sign out clears the session and returns to /login", async ({ page, context
   expect(remaining.map((c) => c.name)).not.toContain(`__Secure-${SESSION_COOKIE}`);
 });
 
-test("magic link: request, open, land on /dashboard", { tag: "@smoke" }, async ({ page }) => {
+test("magic link: an invited address requests, opens, and lands on /dashboard", { tag: "@smoke" }, async ({ page }) => {
   // Better Auth's magic-link plugin shares ONE rate-limit bucket between the sign-in
   // request AND the verify endpoint (`node_modules/better-auth/dist/plugins/magic-link`'s
   // own `rateLimit: [{ pathMatcher: (p) => p.startsWith("/sign-in/magic-link") ||
@@ -158,6 +158,12 @@ test("magic link: request, open, land on /dashboard", { tag: "@smoke" }, async (
   await clearMagicLinkRateLimit();
   const email = uniqueEmail("auth");
   createdEmails.push(email);
+  // decisions/0074: a new account needs a pending invitation.
+  const inviter = await createDbUser("auth-inviter");
+  createdEmails.push(inviter.email);
+  const inviterWorkspace = await createWorkspaceForUser(inviter.id, "Einladende GmbH");
+  createdWorkspaceIds.push(inviterWorkspace.id);
+  await createPendingInvitation(inviterWorkspace.id, email, inviter.id);
 
   await page.goto("/login");
   await requestMagicLink(page, email);
@@ -199,7 +205,8 @@ test("magic link can only be used once", async ({ page }) => {
   // test's own second (legitimate, expected-to-be-rejected-for-reuse-not-rate-limit)
   // verify over the limit.
   await clearMagicLinkRateLimit();
-  const email = uniqueEmail("auth-once");
+  // decisions/0074: an existing account (no workspace yet), the other way to get a link.
+  const { email } = await createDbUser("auth-once");
   createdEmails.push(email);
 
   await page.goto("/login");
@@ -207,7 +214,7 @@ test("magic link can only be used once", async ({ page }) => {
   const link = await magicLinkFor(email);
 
   await page.goto(link);
-  // A brand-new user has no workspace yet, so this lands on /onboarding.
+  // The account has no workspace yet, so this lands on /onboarding.
   await expect.poll(() => pathOf(page.url())).toBe("/onboarding");
 
   // Sign out before the second use - kellner-connect's own equivalent test (this
@@ -278,4 +285,20 @@ test.describe("login rate limit", () => {
       await clearMagicLinkRateLimit();
     }
   });
+});
+
+// decisions/0074-sign-up-by-invitation-only.md
+test("an address with neither an account nor an invitation gets the same answer and no mail", async ({ page }) => {
+  await clearMagicLinkRateLimit();
+  const email = uniqueEmail("stranger");
+
+  await page.goto("/login");
+  await requestMagicLink(page, email);
+  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByText("Falls für", { exact: false })).toBeVisible();
+
+  // The send path returns before any mail is queued; give a delivered mail time to show up.
+  await page.waitForTimeout(3_000);
+  await expect(magicLinkFor(email, 1_000)).rejects.toThrow();
+  expect(await findUserIdByEmail(email)).toBeUndefined();
 });

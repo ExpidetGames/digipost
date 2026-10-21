@@ -42,7 +42,10 @@ test("a new user creates a workspace and lands on the dashboard with the workspa
   }
 });
 
-test("a user who already has a workspace visiting /onboarding is redirected to /dashboard", async ({
+// decisions/0070-several-workspaces-per-user.md: a user who already has a workspace is no
+// longer redirected away from /onboarding. The same page becomes "Weitere Firma anlegen",
+// with a link back to the dashboard.
+test("a user who already has a workspace sees /onboarding as 'Weitere Firma anlegen' with a way back", async ({
   page,
   context,
   baseURL,
@@ -53,6 +56,8 @@ test("a user who already has a workspace visiting /onboarding is redirected to /
 
   try {
     await page.goto("/onboarding");
+    await expect(page.getByRole("heading", { name: "Weitere Firma anlegen" })).toBeVisible();
+    await page.getByRole("link", { name: "Zurück zum Dashboard" }).click();
     await expect.poll(() => new URL(page.url()).pathname).toBe("/dashboard");
     await expect(page.getByText("Existing Co").first()).toBeVisible();
   } finally {
