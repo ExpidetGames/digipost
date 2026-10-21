@@ -1,0 +1,4 @@
+ALTER TABLE "accounts" ADD COLUMN "contact_id" uuid;--> statement-breakpoint
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_contact_id_contacts_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "accounts_workspace_contact_clearing_key" ON "accounts" USING btree ("workspace_id","contact_id") WHERE "accounts"."type" = 'clearing';--> statement-breakpoint
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_clearing_owner_check" CHECK ("accounts"."platform" is null or "accounts"."contact_id" is null);

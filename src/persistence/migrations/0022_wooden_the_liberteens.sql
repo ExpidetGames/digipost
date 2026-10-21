@@ -1,0 +1,1 @@
+ALTER TABLE "documents" ADD COLUMN "manual_kind" text;

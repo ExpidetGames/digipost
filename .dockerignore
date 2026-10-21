@@ -1,0 +1,14 @@
+# Keep Docker build contexts small and secret-free (docker/app.Dockerfile's "tools"
+# stage COPYs the whole source tree). Every .env* file is excluded except the
+# committed template - secrets must never be baked into an image layer;
+# docker/compose.test.yml provides its own dummy env values inline instead.
+node_modules
+.next
+.git
+coverage
+playwright-report
+test-results
+.claude
+.playwright-mcp
+.env*
+!.env.example

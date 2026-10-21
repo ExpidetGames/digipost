@@ -1,0 +1,103 @@
+# Local development infrastructure: a real Postgres and a mail catcher for `pnpm dev`,
+# which runs on the host and therefore needs host ports. This is NOT the hermetic test
+# stack: docker/compose.test.yml (decisions/0006) publishes no host ports at all, so tests never
+# collide with anything running on the machine.
+#
+#   pnpm infra:up      docker compose -f docker/compose.yml --project-directory . up -d --wait
+#   pnpm infra:down    docker compose -f docker/compose.yml --project-directory . down
+#
+# `--project-directory .` keeps the repository root as the compose project directory
+# even though this file lives in docker/: the project name (and so the name of the
+# `postgres-data` volume) stays derived from the repository folder, and `.env` is read
+# from the repository root, exactly as when this file sat at the root itself.
+#
+# Host ports are bound to 127.0.0.1 only and are configurable, so several projects
+# created from this template can run their dev stacks side by side. Pick free ports per
+# project in `.env` at the repository root (read by docker compose, not by Next) or in your
+# shell, and keep DATABASE_URL / SMTP_URL / S3_ENDPOINT in .env.local in sync:
+#
+#   DEV_POSTGRES_PORT=54339    DEV_MAILPIT_WEB_PORT=54344   DEV_MAILPIT_SMTP_PORT=54345
+#   DEV_MINIO_API_PORT=54346   DEV_MINIO_CONSOLE_PORT=54347
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+      # Providers this template targets (Neon, Supabase, RDS) default to C collation;
+      # matching it locally means ordering-sensitive tests behave the same everywhere
+      # (see decisions/0006-docker-test-stack-as-reference.md for the hermetic-stack
+      # equivalent of this same setting).
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      - "127.0.0.1:${DEV_POSTGRES_PORT:-54339}:5432"
+    # postgres:18+ images store data at /var/lib/postgresql/<version>/docker, not
+    # /var/lib/postgresql/data as in older images (they refuse to start against a
+    # volume mounted at the old path) - mount the whole data root instead, same as
+    # docker/compose.test.yml's tmpfs mount for the hermetic stack.
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mailpit:
+    # Same pinned version as docker/compose.test.yml.
+    image: axllent/mailpit:v1.27.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DEV_MAILPIT_WEB_PORT:-54344}:8025" # web UI + API
+      - "127.0.0.1:${DEV_MAILPIT_SMTP_PORT:-54345}:1025" # SMTP
+    environment:
+      MP_MAX_MESSAGES: "500"
+
+  minio:
+    # S3-compatible object storage for src/platform/object-storage
+    # (decisions/0012-object-storage.md). MinIO no longer publishes images at all (the
+    # quay.io and Docker Hub tags are gone); pgsty/minio is a maintained community rebuild
+    # of the upstream source that still ships `mc`. Same pinned tag as docker/compose.test.yml.
+    # Local-only root credentials, matching .env.example's S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY.
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "127.0.0.1:${DEV_MINIO_API_PORT:-54346}:9000" # S3 API (S3_ENDPOINT)
+      - "127.0.0.1:${DEV_MINIO_CONSOLE_PORT:-54347}:9001" # web console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # One-shot: creates the private bucket (.env.example's S3_BUCKET) once MinIO is healthy.
+  # Idempotent (`--ignore-existing`), so every `pnpm infra:up` runs it again. Uses the
+  # MinIO image itself, which ships the `mc` client. In the `init` profile, so a plain
+  # `docker compose up` does not start it: `up --wait` fails on any container that exits,
+  # even with code 0. `pnpm infra:up` runs it explicitly after everything else is healthy.
+  minio-init:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    profiles: ["init"]
+    restart: "no"
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        mc alias set local http://minio:9000 minioadmin minioadmin
+        && mc mb --ignore-existing local/digipost-documents
+        && mc anonymous set none local/digipost-documents
+    depends_on:
+      minio:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  minio-data:

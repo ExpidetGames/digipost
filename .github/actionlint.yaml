@@ -1,0 +1,6 @@
+# Configuration for actionlint (see .github/workflows/ci.yml, job "actionlint").
+# Only GitHub-hosted runners are used (decisions/0073-public-repo-and-production-pipeline.md),
+# so there are no custom runner labels to declare. A self-hosted runner must never be added to a
+# public repository; if that decision is ever reversed, declare its labels here.
+self-hosted-runner:
+  labels: []

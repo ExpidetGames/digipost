@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic fixture: a plausible camt.053.001.02 Bank-to-Customer Statement, hand-built
+     for src/modules/intake's tests. No real bank, account, or person is represented. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>MSG-2026-08-STMT-001</MsgId>
+      <CreDtTm>2026-09-01T06:00:00</CreDtTm>
+    </GrpHdr>
+    <Stmt>
+      <Id>STMT-2026-08</Id>
+      <ElctrncSeqNb>1</ElctrncSeqNb>
+      <CreDtTm>2026-09-01T06:00:00</CreDtTm>
+      <Acct>
+        <Id>
+          <IBAN>DE02120300000000202051</IBAN>
+        </Id>
+        <Ccy>EUR</Ccy>
+      </Acct>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>OPBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <Amt Ccy="EUR">1000.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt>
+          <Dt>2026-08-01</Dt>
+        </Dt>
+      </Bal>
+      <Bal>
+        <Tp>
+          <CdOrPrtry>
+            <Cd>CLBD</Cd>
+          </CdOrPrtry>
+        </Tp>
+        <Amt Ccy="EUR">1999.02</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Dt>
+          <Dt>2026-08-31</Dt>
+        </Dt>
+      </Bal>
+
+      <!-- 1: incoming payment from a customer -->
+      <Ntry>
+        <NtryRef>NTRYREF-001</NtryRef>
+        <Amt Ccy="EUR">250.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <Dt>2026-08-02</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-08-02</Dt>
+        </ValDt>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RCDT</Cd>
+              <SubFmlyCd>ESCT</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-INV-1001</EndToEndId>
+              <AcctSvcrRef>ASR-001</AcctSvcrRef>
+            </Refs>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Müller GmbH</Nm>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>DE45500105172295759744</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RltdAgts>
+              <DbtrAgt>
+                <FinInstnId>
+                  <BICFI>COBADEFFXXX</BICFI>
+                </FinInstnId>
+              </DbtrAgt>
+            </RltdAgts>
+            <RmtInf>
+              <Ustrd>Rechnung 1001</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+
+      <!-- 2: SEPA direct debit, rent, with mandate and creditor id -->
+      <Ntry>
+        <NtryRef>NTRYREF-002</NtryRef>
+        <Amt Ccy="EUR">45.99</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <Dt>2026-08-05</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-08-05</Dt>
+        </ValDt>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RDDT</Cd>
+              <SubFmlyCd>ESDD</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-MIETE-08</EndToEndId>
+              <MndtId>MANDATE-2026-001</MndtId>
+              <AcctSvcrRef>ASR-002</AcctSvcrRef>
+            </Refs>
+            <RltdPties>
+              <Cdtr>
+                <Nm>Hausverwaltung Schäfer &amp; Söhne GmbH</Nm>
+              </Cdtr>
+              <CdtrAcct>
+                <Id>
+                  <IBAN>DE11500105170648489890</IBAN>
+                </Id>
+              </CdtrAcct>
+              <CdtrSchmeId>
+                <Id>
+                  <PrvtId>
+                    <Othr>
+                      <Id>DE98ZZZ09999999999</Id>
+                    </Othr>
+                  </PrvtId>
+                </Id>
+              </CdtrSchmeId>
+            </RltdPties>
+            <RltdAgts>
+              <CdtrAgt>
+                <FinInstnId>
+                  <BICFI>GENODEF1XXX</BICFI>
+                </FinInstnId>
+              </CdtrAgt>
+            </RltdAgts>
+            <RmtInf>
+              <Ustrd>Miete August 2026</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+
+      <!-- 3: outgoing SEPA direct debit, phone bill -->
+      <Ntry>
+        <NtryRef>NTRYREF-003</NtryRef>
+        <Amt Ccy="EUR">19.99</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <Dt>2026-08-07</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-08-07</Dt>
+        </ValDt>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RDDT</Cd>
+              <SubFmlyCd>ESDD</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-TEL-08</EndToEndId>
+              <AcctSvcrRef>ASR-003</AcctSvcrRef>
+            </Refs>
+            <RltdPties>
+              <Cdtr>
+                <Nm>Telekom Deutschland GmbH</Nm>
+              </Cdtr>
+              <CdtrAcct>
+                <Id>
+                  <IBAN>DE07500105174321987654</IBAN>
+                </Id>
+              </CdtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Ustrd>Rechnungsnummer 4711</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+
+      <!-- 4: incoming payment, umlauts in name and remittance -->
+      <Ntry>
+        <NtryRef>NTRYREF-004</NtryRef>
+        <Amt Ccy="EUR">500.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <Dt>2026-08-10</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-08-10</Dt>
+        </ValDt>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RCDT</Cd>
+              <SubFmlyCd>ESCT</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-INV-1002</EndToEndId>
+              <AcctSvcrRef>ASR-004</AcctSvcrRef>
+            </Refs>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Bäcker Weiß oHG</Nm>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>DE33500105179988776655</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Ustrd>Rechnung Nr. 1002 - Gruesse</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+
+      <!-- 5: batch entry, three underlying transactions -->
+      <Ntry>
+        <NtryRef>NTRYREF-005</NtryRef>
+        <Amt Ccy="EUR">325.50</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <Dt>2026-08-15</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-08-15</Dt>
+        </ValDt>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>RCDT</Cd>
+              <SubFmlyCd>ESCT</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-BATCH-1</EndToEndId>
+              <AcctSvcrRef>ASR-005-1</AcctSvcrRef>
+            </Refs>
+            <Amt Ccy="EUR">100.00</Amt>
+            <CdtDbtInd>CRDT</CdtDbtInd>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Grüne Straße Handels GmbH</Nm>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>DE60500105171111111111</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Ustrd>Bestellung 501</Ustrd>
+            </RmtInf>
+          </TxDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-BATCH-2</EndToEndId>
+              <AcctSvcrRef>ASR-005-2</AcctSvcrRef>
+            </Refs>
+            <Amt Ccy="EUR">150.00</Amt>
+            <CdtDbtInd>CRDT</CdtDbtInd>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Österreich Consulting GmbH</Nm>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>AT483200000012345864</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Ustrd>Bestellung 502</Ustrd>
+            </RmtInf>
+          </TxDtls>
+          <TxDtls>
+            <Refs>
+              <EndToEndId>E2E-BATCH-3</EndToEndId>
+              <AcctSvcrRef>ASR-005-3</AcctSvcrRef>
+            </Refs>
+            <Amt Ccy="EUR">75.50</Amt>
+            <CdtDbtInd>CRDT</CdtDbtInd>
+            <RltdPties>
+              <Dbtr>
+                <Nm>Süßwaren Krüger KG</Nm>
+              </Dbtr>
+              <DbtrAcct>
+                <Id>
+                  <IBAN>DE29500105172222222222</IBAN>
+                </Id>
+              </DbtrAcct>
+            </RltdPties>
+            <RmtInf>
+              <Ustrd>Bestellung 503</Ustrd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+
+      <!-- 6: bank fee, no NtryDtls/TxDtls at all (exercises the non-batch, no-detail path) -->
+      <Ntry>
+        <NtryRef>NTRYREF-006</NtryRef>
+        <AcctSvcrRef>ASR-006</AcctSvcrRef>
+        <Amt Ccy="EUR">10.50</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>
+          <Cd>BOOK</Cd>
+        </Sts>
+        <BookgDt>
+          <Dt>2026-08-31</Dt>
+        </BookgDt>
+        <ValDt>
+          <Dt>2026-08-31</Dt>
+        </ValDt>
+        <BkTxCd>
+          <Domn>
+            <Cd>PMNT</Cd>
+            <Fmly>
+              <Cd>MCOP</Cd>
+              <SubFmlyCd>MCOP</SubFmlyCd>
+            </Fmly>
+          </Domn>
+        </BkTxCd>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

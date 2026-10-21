@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "payment_auto_confirm" text DEFAULT 'system' NOT NULL;

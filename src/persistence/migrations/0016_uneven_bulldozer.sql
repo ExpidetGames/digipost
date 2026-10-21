@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "accounts_workspace_platform_clearing_key" ON "accounts" USING btree ("workspace_id","platform") WHERE "accounts"."type" = 'clearing';

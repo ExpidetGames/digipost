@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic fixture: an XXE attempt (external entity referencing a local file). Must be
+     rejected by assertSafeXml before any parser ever sees it - see xml-safety.test.ts and
+     camt053-parser.test.ts. -->
+<!DOCTYPE Document [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <GrpHdr>
+      <MsgId>&xxe;</MsgId>
+    </GrpHdr>
+  </BkToCstmrStmt>
+</Document>

@@ -1,0 +1,387 @@
+name: Deploy production
+
+# Deploys Digipost to Vercel production. A push to main, or a manual run on main, goes through these jobs, and a
+# failure of any job before `promote` leaves production on the deployment it has. Merging the release pull request
+# (development into main) is the whole release: there is no manual step. The full guide, with the one-time setup, is
+# scripts/deploy/README.md; the decision behind it is decisions/0073-public-repo-and-production-pipeline.md.
+#
+#   fresh -> migrate -> stage -> health -> promote -> record      (record always runs, last)
+#
+#  1. fresh: the commit of this run is still the head of main; an older run (a re-run) is refused.
+#  2. migrate: `pnpm db:migrate --remote --expect-host=...` against the owner role's direct URL (advisory lock, one
+#     transaction). A failed migration means no deployment.
+#  3. stage: a staged production deployment, built here and uploaded: `vercel pull`, `vercel build --prod` (without
+#     the Vercel token), `vercel deploy --prebuilt --prod --skip-domain`. It uses the production environment's
+#     variables and is NOT assigned the production domain. This is the one stage, in this one workflow rather than a
+#     reusable one, because there is only one Vercel project.
+#  4. health: scripts/deploy/check.mjs against the staged address, through Deployment Protection with the project's
+#     Protection Bypass for Automation secret: /api/health must answer 200 with the commit of this run as `version`,
+#     and the landing page, the sign-in page and the dashboard's redirect must be there.
+#  5. promote: `vercel promote`, which assigns the production domain to the staged deployment. It checks again, right
+#     before it acts, that the commit is still the head of main (a re-run of the failed jobs of an old run skips
+#     `fresh`).
+#  6. record: closes the GitHub deployment record with what happened.
+#
+# Production only: no staging, no preview. It never runs for a pull request and never on `pull_request_target`. Every
+# job runs only for this repository on main (the job's own condition guards against accidents; the boundary is the
+# environment `production`, restricted to main, which holds the Infisical sign-in as secrets). Deployments queue one
+# behind the other and are never cancelled: a migration or a promotion in progress runs to its end.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      allow_stale:
+        description: "Deploy even though a newer commit is on main (deliberate, for a re-run of an old commit)"
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  VERCEL_TELEMETRY_DISABLED: "1"
+
+jobs:
+  # A re-run of an old run rebuilds that run's commit. Without this it would be staged and promoted over a newer
+  # production. Needs no secret. "Re-run failed jobs" skips a job that succeeded, so the job that promotes runs the
+  # same check itself, right before it acts.
+  fresh:
+    name: Check that the commit is the head of main
+    if: ${{ github.repository == 'ExpidetGames/digipost' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/check-current-commit
+        with:
+          github-token: ${{ github.token }}
+          allow-stale: ${{ inputs.allow_stale }}
+
+  migrate:
+    name: Migrate the database
+    needs: fresh
+    if: ${{ github.repository == 'ExpidetGames/digipost' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0 (version from package.json "packageManager")
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # After the install (so no install script sees the URL) and just before the command that uses it.
+      # MIGRATE_EXPECTED_HOST is a second, independently entered copy of the database's host name: the guard below
+      # refuses to run when the URL points anywhere else, so a swapped or mistyped secret never migrates the wrong
+      # database (scripts/db/env.mjs, guardHost).
+      - name: Load the migrate role's database URL from Infisical
+        uses: ./.github/actions/infisical-ci-secrets
+        with:
+          secret-names: DATABASE_URL_MIGRATE MIGRATE_EXPECTED_HOST
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          domain: ${{ secrets.INFISICAL_DOMAIN }}
+          project-slug: ${{ secrets.INFISICAL_PROJECT_SLUG }}
+          consequence: Nothing was migrated, so nothing is deployed.
+      # Takes the advisory lock, applies every pending migration in one transaction and prints the number applied,
+      # never the password. Idempotent: a run with nothing to apply exits 0.
+      - name: Apply the migrations
+        run: pnpm db:migrate --remote --expect-host="${MIGRATE_EXPECTED_HOST}"
+
+  stage:
+    name: Stage the deployment on Vercel
+    needs: migrate
+    if: ${{ github.repository == 'ExpidetGames/digipost' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Holds the Infisical sign-in; its deployment branches are restricted to main.
+    environment: production
+    permissions:
+      contents: read
+      deployments: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+      deployment-id: ${{ steps.record.outputs.deployment-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Record the deployment on GitHub
+        id: record
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const environment = 'app-production';
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: process.env.COMMIT_SHA,
+              environment,
+              description: 'Vercel production deployment',
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: false,
+              production_environment: true,
+            });
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'in_progress',
+              environment,
+              log_url: process.env.RUN_URL,
+              description: 'Staged on Vercel, not promoted yet.',
+              auto_inactive: false,
+            });
+            core.setOutput('deployment-id', String(deployment.data.id));
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0 (version from package.json "packageManager")
+      # No cache: what is promoted is built from the lockfile, not from a cache another run wrote.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      # Before the token is loaded: the install scripts of the dependencies run without it. The install command of
+      # the project, which `vercel build` runs later, finds nothing to do.
+      - name: Install the dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install the Vercel CLI
+        uses: ./.github/actions/vercel-cli
+      - name: Load the Vercel credentials from Infisical
+        uses: ./.github/actions/infisical-ci-secrets
+        with:
+          secret-names: VERCEL_TOKEN VERCEL_TEAM_ID VERCEL_APP_PROJECT_ID
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          domain: ${{ secrets.INFISICAL_DOMAIN }}
+          project-slug: ${{ secrets.INFISICAL_PROJECT_SLUG }}
+          consequence: Nothing is deployed.
+      # The CLI reads the team and the project from VERCEL_ORG_ID and VERCEL_PROJECT_ID. The loaded values are already
+      # masked; they are neither echoed nor passed on a command line.
+      - name: Export the team and project ids under the names the CLI reads
+        run: |
+          set -euo pipefail
+          echo "VERCEL_ORG_ID=${VERCEL_TEAM_ID}" >> "$GITHUB_ENV"
+          echo "VERCEL_PROJECT_ID=${VERCEL_APP_PROJECT_ID}" >> "$GITHUB_ENV"
+      - name: Pull the production settings and variables
+        run: vercel pull --yes --environment=production
+      # The code of the project runs here (next build, bundlers, plugins). The token is removed from its environment by
+      # `env -u`, which does not depend on which of a step's and the job's variables wins. APP_COMMIT_SHA is set for
+      # the build as well, although GET /api/health reads it at run time: the deploy step below passes it as a run-time
+      # variable of this one deployment.
+      - name: Build
+        env:
+          APP_COMMIT_SHA: ${{ github.sha }}
+        run: env -u VERCEL_TOKEN vercel build --prod
+      # `--skip-domain`: a staged production deployment, no domain. `--json` prints the deployment as one JSON document
+      # on stdout (the CLI's other output goes to stderr). `--env APP_COMMIT_SHA` is a run-time variable of this
+      # deployment only: the project's own variables are not touched, and /api/health reports it as `version`.
+      - name: Deploy the build, staged
+        id: deploy
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+
+          status=0
+          document="$(
+            vercel deploy --prebuilt --prod --skip-domain --archive=tgz --json \
+              --env "APP_COMMIT_SHA=${COMMIT_SHA}" \
+              --meta githubDeployment=1 \
+              --meta githubCommitRef=main \
+              --meta githubCommitSha="${COMMIT_SHA}" \
+              --meta githubCommitOrg="${REPOSITORY_OWNER}" \
+              --meta githubCommitRepo="${REPOSITORY#*/}" \
+              --meta githubOrg="${REPOSITORY_OWNER}" \
+              --meta githubRepo="${REPOSITORY#*/}"
+          )" || status=$?
+          # On a failure the CLI prints a document with a stable reason on stdout; the rest of its output is on stderr.
+          if [ "${status}" -ne 0 ]; then
+            reason="$(jq -r '.reason // empty | select(test("^[a-z_]{1,40}$"))' <<< "${document}" 2> /dev/null || true)"
+            echo "::error::The deployment failed${reason:+ (${reason})}."
+            exit 1
+          fi
+          url="$(jq -r '.url // empty' <<< "${document}")"
+          id="$(jq -r '.id // empty' <<< "${document}")"
+          target="$(jq -r '.target // empty' <<< "${document}")"
+          state="$(jq -r '.readyState // empty' <<< "${document}")"
+          if ! [[ "${url}" =~ ^https://[a-z0-9-]+\.vercel\.app$ ]] || ! [[ "${id}" =~ ^dpl_[A-Za-z0-9]+$ ]]; then
+            echo "::error::The CLI did not report a deployment."
+            exit 1
+          fi
+          # A preview, or a deployment that is not ready, is no staged production deployment.
+          if [ "${target}" != "production" ] || [ "${state}" != "READY" ]; then
+            echo "::error::The CLI did not report a ready production deployment."
+            exit 1
+          fi
+          {
+            echo "url=${url}"
+            echo "vercel-id=${id}"
+          } >> "$GITHUB_OUTPUT"
+      - name: Summarize
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          {
+            echo "### Staged"
+            echo
+            echo "- url: ${DEPLOYMENT_URL}"
+            echo "- not promoted yet: the production domain still points at the previous deployment"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Mark the GitHub deployment failed
+        if: ${{ failure() && steps.record.outputs.deployment-id != '' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          DEPLOYMENT_ID: ${{ steps.record.outputs.deployment-id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: Number(process.env.DEPLOYMENT_ID),
+              state: 'failure',
+              environment: 'app-production',
+              log_url: process.env.RUN_URL,
+              description: 'The deployment could not be staged.',
+              auto_inactive: false,
+            });
+
+  health:
+    name: Check the staged deployment's health
+    needs: stage
+    if: ${{ github.repository == 'ExpidetGames/digipost' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      # The staged address is under Deployment Protection (every address but the production domain is), so the
+      # Protection Bypass for Automation secret of the project opens it.
+      - name: Load the bypass secret from Infisical
+        uses: ./.github/actions/infisical-ci-secrets
+        with:
+          secret-names: VERCEL_APP_AUTOMATION_BYPASS_SECRET
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          domain: ${{ secrets.INFISICAL_DOMAIN }}
+          project-slug: ${{ secrets.INFISICAL_PROJECT_SLUG }}
+          consequence: The staged deployment was not checked, so nothing is promoted.
+      # No dependencies: the script needs only Node. It sends the secret in a request header, only to a
+      # *.vercel.app address, follows no redirect, and prints status codes, never a body or a header.
+      - name: Check the staged deployment
+        env:
+          DEPLOYMENT_URL: ${{ needs.stage.outputs.url }}
+          COMMIT_SHA: ${{ github.sha }}
+          DEPLOY_CHECK_BYPASS_SECRET: ${{ env.VERCEL_APP_AUTOMATION_BYPASS_SECRET }}
+        run: node scripts/deploy/check.mjs "${DEPLOYMENT_URL}" --expect-version="${COMMIT_SHA::7}"
+
+  promote:
+    name: Promote to production
+    needs: [stage, health]
+    if: ${{ github.repository == 'ExpidetGames/digipost' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+      - name: Install the Vercel CLI
+        uses: ./.github/actions/vercel-cli
+      - name: Load the Vercel credentials from Infisical
+        uses: ./.github/actions/infisical-ci-secrets
+        with:
+          secret-names: VERCEL_TOKEN VERCEL_TEAM_ID VERCEL_APP_PROJECT_ID
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          domain: ${{ secrets.INFISICAL_DOMAIN }}
+          project-slug: ${{ secrets.INFISICAL_PROJECT_SLUG }}
+          consequence: Nothing is promoted; production stays on its previous deployment.
+      # Right before the promotion, so that a re-run of failed jobs of an old run cannot skip it.
+      - uses: ./.github/actions/check-current-commit
+        with:
+          github-token: ${{ github.token }}
+          allow-stale: ${{ inputs.allow_stale }}
+      # The CLI reads the token from VERCEL_TOKEN, the team and the project from the environment.
+      - name: Promote
+        env:
+          DEPLOYMENT_URL: ${{ needs.stage.outputs.url }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_APP_PROJECT_ID }}
+        run: vercel promote "$DEPLOYMENT_URL" --yes --timeout 5m
+
+  # Closes the GitHub deployment record of the stage with what happened to it: `success` only if the promotion went
+  # through.
+  record:
+    name: Close the GitHub deployment
+    needs: [stage, promote]
+    if: ${{ always() && github.repository == 'ExpidetGames/digipost' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          RESULT: ${{ needs.promote.result }}
+          DEPLOYMENT_ID: ${{ needs.stage.outputs.deployment-id }}
+          DEPLOYMENT_URL: ${{ needs.stage.outputs.url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const id = process.env.DEPLOYMENT_ID;
+            if (!id) return;
+            const result = process.env.RESULT;
+            const promoted = result === 'success';
+            const url = process.env.DEPLOYMENT_URL;
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: Number(id),
+              state: promoted ? 'success' : result === 'cancelled' ? 'inactive' : 'failure',
+              environment: 'app-production',
+              ...(promoted && url ? { environment_url: url } : {}),
+              log_url: process.env.RUN_URL,
+              description: promoted
+                ? 'Promoted to production.'
+                : 'Not promoted; production stays on the previous deployment.',
+              auto_inactive: promoted,
+            });

@@ -1,0 +1,89 @@
+name: Prepare the CI test stack
+description: >-
+  The same setup docker/compose.test.yml gives `pnpm test:docker`, without Docker Compose: the `postgres` and `mailpit`
+  service containers of the calling job (declared in the job, because a composite action cannot declare services) plus
+  a MinIO container this action starts, the database roles, the migrations and the seed. Exports the test stack's
+  environment variables to the rest of the job (GITHUB_ENV) and sets DIGIPOST_TEST_STACK=1, which the `db` and
+  `integration` Vitest projects require (scripts/test/test-stack-guard.ts). Dependencies must be installed before (the
+  database scripts use `pg`); the repository must be checked out (this is a local action).
+  Every value here is a throwaway test value, the same ones docker/compose.test.yml writes: CI uses no secret.
+  The calling job's services must listen on 127.0.0.1: postgres 5432 (user postgres, password postgres, database app,
+  initialised with --locale=C --encoding=UTF8), mailpit 1025 (SMTP) and 8025 (HTTP API).
+
+runs:
+  using: composite
+  steps:
+    # docker/test-db-init/00_roles.sql is what the Postgres image runs from /docker-entrypoint-initdb.d in the Compose
+    # stack (app_owner is a plain LOGIN role that owns the database, like a hosted provider's owner role).
+    - name: Create the database roles
+      shell: bash
+      env:
+        PGPASSWORD: postgres
+      run: psql --host 127.0.0.1 --username postgres --dbname app -v ON_ERROR_STOP=1 --file docker/test-db-init/00_roles.sql
+
+    # pgsty/minio needs `server /data` as its command, which a `services:` entry cannot pass, so it is started here.
+    # No volume: the data lives in the container, which dies with the job.
+    - name: Start MinIO and create the bucket
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker run --detach --name minio \
+          --publish 127.0.0.1:9000:9000 \
+          --env MINIO_ROOT_USER=test-minio-user \
+          --env MINIO_ROOT_PASSWORD=test-minio-password-only-for-docker-test-stack \
+          pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data
+        for attempt in $(seq 1 60); do
+          if curl --silent --fail --output /dev/null http://127.0.0.1:9000/minio/health/ready; then
+            break
+          fi
+          if [ "${attempt}" = "60" ]; then
+            echo "::error::MinIO did not become ready."
+            docker logs minio || true
+            exit 1
+          fi
+          sleep 1
+        done
+        docker exec minio mc alias set test http://127.0.0.1:9000 test-minio-user test-minio-password-only-for-docker-test-stack
+        docker exec minio mc mb --ignore-existing test/digipost-test-documents
+        docker exec minio mc anonymous set none test/digipost-test-documents
+
+    - name: Export the test stack's environment
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "DATABASE_URL=postgres://app_runtime:test-runtime-password-only-for-docker-test-stack@127.0.0.1:5432/app"
+          echo "DATABASE_URL_PUBLIC=postgres://app_public:test-public-password-only-for-docker-test-stack@127.0.0.1:5432/app"
+          echo "DATABASE_URL_MIGRATE=postgres://app_owner:test-owner-password-only-for-docker-test-stack@127.0.0.1:5432/app"
+          echo "APP_URL=http://localhost:3000"
+          echo "NEXT_PUBLIC_APP_URL=http://localhost:3000"
+          echo "SMTP_URL=smtp://127.0.0.1:1025"
+          echo "MAIL_FROM=Digipost <no-reply@digipost.test>"
+          echo "MAILPIT_API_URL=http://127.0.0.1:8025"
+          echo "BETTER_AUTH_SECRET=test-better-auth-secret-only-for-the-docker-test-stack-000"
+          echo "CRON_SECRET=test-cron-secret-only-for-the-docker-test-stack-0000000"
+          echo "S3_ENDPOINT=http://127.0.0.1:9000"
+          echo "S3_REGION=us-east-1"
+          echo "S3_BUCKET=digipost-test-documents"
+          echo "S3_ACCESS_KEY_ID=test-minio-user"
+          echo "S3_SECRET_ACCESS_KEY=test-minio-password-only-for-docker-test-stack"
+          echo "S3_FORCE_PATH_STYLE=true"
+          echo "AI_PROVIDER=fake"
+          echo "BILLING_TEST_MODE=true"
+          echo "DIGIPOST_TEST_STACK=1"
+          echo "NEXT_TELEMETRY_DISABLED=1"
+        } >> "$GITHUB_ENV"
+
+    # The compose stack's `migrate` service: the same three scripts in the same order. The role script finds the roles
+    # from the SQL file above and changes nothing; the seed always runs, so "migrated but not seeded" is never tested.
+    - name: Bootstrap roles, migrate and seed
+      shell: bash
+      env:
+        DATABASE_URL: postgres://app_runtime:test-runtime-password-only-for-docker-test-stack@127.0.0.1:5432/app
+        DATABASE_URL_PUBLIC: postgres://app_public:test-public-password-only-for-docker-test-stack@127.0.0.1:5432/app
+        DATABASE_URL_MIGRATE: postgres://app_owner:test-owner-password-only-for-docker-test-stack@127.0.0.1:5432/app
+      run: |
+        set -euo pipefail
+        node scripts/db/bootstrap-roles.mjs
+        node scripts/db/migrate.mjs
+        node scripts/db/seed.mjs

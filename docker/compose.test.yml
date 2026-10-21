@@ -1,0 +1,225 @@
+# Hermetic Docker test stack (WEBAPP_TEMPLATE_SPEC.md §10.3,
+# decisions/0006-docker-test-stack-as-reference.md). No host ports: every service
+# talks to the others over the compose network only, so it never collides with
+# `pnpm dev`, docker/compose.yml's Postgres/Mailpit, or any other local project. Run via
+# `pnpm test:docker` / `pnpm test:e2e:docker` (scripts/test/docker.mjs), never
+# `docker compose` directly:
+#   - that script always tears the stack down afterwards (`down -v`), even on
+#     failure or Ctrl-C;
+#   - it picks a compose PROJECT NAME derived from this checkout's path (or
+#     $WEBAPP_TEMPLATE_TEST_PROJECT) and passes it with `-p`, so two git worktrees
+#     running their stacks at the same time get their own containers/networks/
+#     volumes instead of colliding on the `name:` below;
+#   - it reads the exact installed `@playwright/test` version and passes it as the
+#     `PLAYWRIGHT_VERSION` build arg the `e2e` service's image needs;
+#   - it passes `--project-directory <repo root>`, so every relative path below
+#     (`context: .`, `./docker/test-db-init`, `./playwright-report`) resolves against
+#     the repository root, not against docker/ where this file lives.
+# All values below are dummy test values written directly in this file (no env
+# files) - see docker/test-db-init/00_roles.sql for why the DB passwords are fixed
+# here rather than generated.
+name: digipost-test
+
+x-db-urls: &db-urls
+  DATABASE_URL: postgres://app_runtime:test-runtime-password-only-for-docker-test-stack@postgres:5432/app
+  DATABASE_URL_PUBLIC: postgres://app_public:test-public-password-only-for-docker-test-stack@postgres:5432/app
+  DATABASE_URL_MIGRATE: postgres://app_owner:test-owner-password-only-for-docker-test-stack@postgres:5432/app
+
+# Everything else the src/app/tests need to run at all (.env.example's list) - fixed
+# dummy values, so this file is the one place they are written for the test stack.
+x-app-env: &app-env
+  APP_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  SMTP_URL: smtp://mailpit:1025
+  MAIL_FROM: "Digipost <no-reply@digipost.test>"
+  # >= 32 chars (src/platform/env/server/env.ts's own check).
+  BETTER_AUTH_SECRET: test-better-auth-secret-only-for-the-docker-test-stack-000
+  CRON_SECRET: test-cron-secret-only-for-the-docker-test-stack-0000000
+  # The `minio` service below (decisions/0012-object-storage.md); `minio-init` creates the bucket.
+  S3_ENDPOINT: http://minio:9000
+  S3_REGION: us-east-1
+  S3_BUCKET: digipost-test-documents
+  S3_ACCESS_KEY_ID: test-minio-user
+  S3_SECRET_ACCESS_KEY: test-minio-password-only-for-docker-test-stack
+  S3_FORCE_PATH_STYLE: "true"
+  # AI (src/platform/mistral, decisions/0016-processing-pipeline-and-ai.md): explicit "fake"
+  # so every test runs the deterministic fake OCR/analyzer, never a real Mistral call.
+  AI_PROVIDER: fake
+  # Billing (src/modules/billing, decisions/0017-billing-tiers-and-packages.md): explicit
+  # "true" so tier-change/package-purchase tests exercise the real (test-mode) code path
+  # rather than the "not configured" refusal.
+  BILLING_TEST_MODE: "true"
+  # vitest.config.ts's `db`/`integration` projects (scripts/test/test-stack-guard.ts) refuse
+  # to run at all without this - it is what actually makes `pnpm test:db`/`pnpm test:int`
+  # safe to run only inside this hermetic stack, never against the local dev database
+  # (docker/compose.yml).
+  DIGIPOST_TEST_STACK: "1"
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+      # Providers this template targets (Neon, Supabase, RDS) default to C
+      # collation; matching it here means ordering-sensitive assertions behave the
+      # same in the test stack as in every real deployment target
+      # (WEBAPP_TEMPLATE_SPEC.md §5.9, decisions/0006).
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    # postgres:18+ images store data at /var/lib/postgresql/<version>/docker (not
+    # /var/lib/postgresql/data as in older images) - tmpfs the whole data root so
+    # every run starts fresh.
+    tmpfs:
+      - /var/lib/postgresql
+    volumes:
+      - ./docker/test-db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.27.0
+    # The image already declares its own healthcheck (`/mailpit readyz`) - `app` and
+    # `tests` wait on it explicitly below so their first SMTP connection never races
+    # the container's network attach/DNS registration.
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
+  # S3-compatible object storage for src/platform/object-storage
+  # (decisions/0012-object-storage.md). Same pinned image (pgsty/minio, a community
+  # rebuild, since MinIO stopped publishing images) as docker/compose.yml. No host ports, no volume: data lives in
+  # tmpfs, so every run starts with an empty bucket.
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: test-minio-user
+      MINIO_ROOT_PASSWORD: test-minio-password-only-for-docker-test-stack
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+
+  # One-shot: creates the private bucket (x-app-env's S3_BUCKET) with the `mc` client the
+  # MinIO image ships. `tests` and `app` (and through `app`, `e2e`) wait for it.
+  minio-init:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        mc alias set test http://minio:9000 test-minio-user test-minio-password-only-for-docker-test-stack
+        && mc mb --ignore-existing test/digipost-test-documents
+        && mc anonymous set none test/digipost-test-documents
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  # One-shot: role bootstrap (idempotent - docker/test-db-init/00_roles.sql already
+  # created every role; keeps scripts/db/bootstrap-roles.mjs exercised against a
+  # plain Postgres URL too), migrations, seed. The seed always runs
+  # (WEBAPP_TEMPLATE_SPEC.md §10.3 pitfall 7): some *.db.test.ts/*.integration.test.ts
+  # may come to depend on seeded reference data, and a "migrated but not seeded"
+  # state would then go untested.
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+      target: tools
+    command: sh -c "node scripts/db/bootstrap-roles.mjs && node scripts/db/migrate.mjs && node scripts/db/seed.mjs"
+    environment:
+      <<: *db-urls
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # `pnpm test:docker`: *.db.test.ts then tests/integration/**. Both run in the
+  # `tools` image against this stack's own Postgres/Mailpit, never a hosted database.
+  tests:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+      target: tools
+    command: sh -c "pnpm test:db && pnpm test:int"
+    environment:
+      <<: [*db-urls, *app-env]
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Mailpit's HTTP API (decisions/0017-billing-tiers-and-packages.md's warning-email
+      # integration test polls this directly - the same value the `e2e` service below uses).
+      MAILPIT_API_URL: http://mailpit:8025
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  # A real production build (`next build` + `next start`, not `next dev`) so e2e
+  # exercises what actually ships - `NODE_ENV=production` also matches Secure-cookie
+  # behavior (see the `e2e` service below).
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+    environment:
+      <<: [*db-urls, *app-env]
+      PORT: "3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    # GET /api/health (src/app/api/health/route.ts, T5): liveness + DB readiness, so this
+    # healthcheck also proves the app can actually reach Postgres as app_runtime, not
+    # only that the Next.js server process came up.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 2s
+      timeout: 3s
+      start_period: 5s
+      retries: 60
+
+  # `pnpm test:e2e:docker`. `network_mode: "service:app"` (WEBAPP_TEMPLATE_SPEC.md
+  # §10.3 pitfall 1): shares the `app` container's network namespace instead of
+  # getting its own, so the browser reaches the app at plain `localhost` - exactly
+  # like `pnpm test:e2e` locally - which matters once auth lands, because the app
+  # runs with `NODE_ENV=production` and would then set `Secure`/`__Secure-`-prefixed
+  # cookies; Chromium only accepts those over plain HTTP on `localhost`. A service
+  # using `network_mode` may not also declare `networks:` or publish its own ports
+  # (and does not need to - it reaches `postgres`/`mailpit` over the shared default
+  # network via `app`'s namespace).
+  e2e:
+    build:
+      context: .
+      dockerfile: docker/e2e.Dockerfile
+      args:
+        # docker.mjs sets this from pnpm-lock.yaml/node_modules.
+        PLAYWRIGHT_VERSION: ${PLAYWRIGHT_VERSION:?PLAYWRIGHT_VERSION must be set - run via `pnpm test:e2e:docker` (scripts/test/docker.mjs), not `docker compose` directly}
+    network_mode: "service:app"
+    environment:
+      <<: [*db-urls, *app-env]
+      E2E_BASE_URL: http://localhost:3000
+      MAILPIT_API_URL: http://mailpit:8025
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./playwright-report:/work/playwright-report
+      - ./test-results:/work/test-results

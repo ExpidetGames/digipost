@@ -1,0 +1,1462 @@
+{
+  "Metadata": {
+    "title": "Digipost: digitaler Posteingang für KMU",
+    "description": "Digipost digitalisiert die Geschäftspost kleiner und mittlerer Unternehmen: mit dem Smartphone scannen, automatisch auslesen lassen und mit den Buchungen auf dem Bankkonto abgleichen, ohne Scan-Dienstleister."
+  },
+  "Common": {
+    "loading": "Wird geladen…",
+    "errorHeading": "Etwas ist schiefgelaufen",
+    "errorDescription": "Diese Seite konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "retry": "Erneut versuchen",
+    "dateRange": {
+      "label": "Zeitraum: {from} bis {to}",
+      "labelFrom": "Zeitraum: ab {from}",
+      "labelTo": "Zeitraum: bis {to}",
+      "clear": "Zeitraum aufheben"
+    }
+  },
+  "Marketing": {
+    "logoPlaceholder": "Digipost",
+    "nav": {
+      "howItWorks": "So funktioniert es",
+      "features": "Funktionen",
+      "pricing": "Preise",
+      "faq": "FAQ"
+    },
+    "signInCta": "Anmelden",
+    "hero": {
+      "kicker": "Digitaler Posteingang für kleine und mittlere Unternehmen",
+      "heading": "Ihre Geschäftspost, sofort beim richtigen Kollegen",
+      "tagline": "Digipost scannt, liest aus und leitet Ihre eingehende Post automatisch weiter: Post ist in Minuten beim richtigen Kollegen statt tagelang auf einem Schreibtisch.",
+      "primaryCta": "Kostenlos starten",
+      "secondaryCta": "So funktioniert es",
+      "flow": {
+        "scan": "Scannen",
+        "analyze": "Auslesen",
+        "deliver": "Zustellen"
+      }
+    },
+    "problem": {
+      "heading": "Der Posteingang kostet jeden Tag Zeit",
+      "items": {
+        "sorting": {
+          "heading": "Briefe sortieren per Hand",
+          "body": "Post wird geöffnet, sortiert und im Haus weitergereicht, oft mehrmals am Tag."
+        },
+        "lateInvoices": {
+          "heading": "Rechnungen kommen zu spät",
+          "body": "Bis eine Rechnung bei der Buchhaltung ankommt, sind häufig schon mehrere Tage vergangen."
+        },
+        "missedDeadlines": {
+          "heading": "Fristen werden verpasst",
+          "body": "Mahnungen und Behördenschreiben liegen unbemerkt auf einem Schreibtisch, bis es zu spät ist."
+        }
+      }
+    },
+    "howItWorks": {
+      "heading": "So funktioniert es",
+      "steps": {
+        "scan": {
+          "number": "1",
+          "heading": "Mit dem Handy scannen",
+          "body": "Fotografieren Sie den Brief mit der Digipost-Kamera. Die Kanten werden automatisch erkannt und das Bild zugeschnitten."
+        },
+        "analyze": {
+          "number": "2",
+          "heading": "Digipost liest den Brief aus",
+          "body": "Die Texterkennung erfasst den Inhalt, erkennt Absender, Datum und Betrag und legt das Dokument unter einem einheitlichen Namen ab."
+        },
+        "match": {
+          "number": "3",
+          "heading": "Die Zahlung wird zugeordnet",
+          "body": "Digipost verbindet den Beleg mit der passenden Buchung auf Ihrem Konto. Sie sehen auf einen Blick, wofür eine Abbuchung war und was noch offen ist."
+        }
+      }
+    },
+    "features": {
+      "heading": "Funktionen",
+      "items": {
+        "scanner": {
+          "heading": "Kamera-Scanner mit Kantenerkennung",
+          "body": "Automatische Kantenerkennung und Perspektivkorrektur direkt im Browser, auch für mehrseitige Sendungen."
+        },
+        "ocr": {
+          "heading": "Durchsuchbare PDFs",
+          "body": "Jedes Dokument erhält durch Texterkennung eine unsichtbare Textebene, damit Sie es später per Volltextsuche wiederfinden."
+        },
+        "kinds": {
+          "heading": "Automatische Erkennung der Dokumentart",
+          "body": "Eingangsrechnung, Beleg, Kontoauszug oder Plattformbericht: Digipost erkennt die Art und liest die passenden Felder aus, Betrag, Datum, Rechnungsnummer."
+        },
+        "search": {
+          "heading": "Volltextsuche",
+          "body": "Finden Sie jedes Dokument anhand von Titel, Absender oder Inhalt in Sekunden wieder."
+        },
+        "workspaces": {
+          "heading": "Arbeitsbereiche für mehrere Nutzer",
+          "body": "Laden Sie Ihr Team ein und arbeiten Sie gemeinsam an einem geteilten Posteingang."
+        },
+        "payments": {
+          "heading": "Abgleich mit dem Bankkonto",
+          "body": "Digipost ordnet jede Kontobewegung dem passenden Beleg zu und zeigt, was noch offen ist. Eindeutige Treffer bestätigt es auf Wunsch selbst."
+        },
+        "quotas": {
+          "heading": "Nachvollziehbare Kontingente",
+          "body": "Jeder Tarif hat ein klares Dokumentenkontingent, damit Sie Ihre Kosten jederzeit im Blick behalten."
+        }
+      }
+    },
+    "comparison": {
+      "heading": "Software statt Scan-Dienstleister",
+      "intro": "Digipost ist keine externe Poststelle, sondern Software für Ihre eigene Poststelle im Haus.",
+      "items": {
+        "noForwarding": "Kein Nachsendeauftrag: Ihre Post kommt weiterhin an Ihre eigene Adresse.",
+        "noPickup": "Keine Abholung notwendig: Sie erfassen Ihre Post selbst, direkt bei Ihnen im Haus.",
+        "readyImmediately": "Sofort startklar: keine Vertragslaufzeit und keine Umstellungszeit wie bei einem externen Dienstleister.",
+        "staysInHouse": "Ihre Post bleibt im Haus: die Originale verlassen Ihr Unternehmen nie."
+      }
+    },
+    "pricing": {
+      "heading": "Preise",
+      "description": "Wählen Sie den Tarif, der zu Ihrem Postaufkommen passt. Ein Wechsel ist jederzeit möglich.",
+      "recommended": "Meist gewählt",
+      "tiers": {
+        "free": "Free",
+        "starter": "Starter",
+        "pro": "Pro",
+        "unlimited": "Unlimited"
+      },
+      "free": "Kostenlos",
+      "perMonth": "{price}/Monat",
+      "totalDocumentsLabel": "{count} Dokumente gesamt",
+      "monthlyDocumentsLabel": "{count} neue Dokumente pro Monat",
+      "monthlyDocumentsNone": "Kein monatliches Limit",
+      "cta": "Kostenlos starten",
+      "packagesNote": "Zusätzlicher Bedarf im laufenden Monat lässt sich mit einem Paket aufstocken: S (+{sExtra} Dokumente, {sPrice} €), M (+{mExtra} Dokumente, {mPrice} €), L (+{lExtra} Dokumente, {lPrice} €). Pakete gelten nur für den aktuellen Kalendermonat und heben das Gesamtlimit des Tarifs nicht an. Auf dem Tarif Free sind keine Pakete buchbar.",
+      "hardStopNote": "Wird ein Limit erreicht, lehnt Digipost weitere Uploads ab. Es gibt keine automatische Abrechnung von zusätzlichem Verbrauch (kein automatisches Overage).",
+      "vatNote": "Alle Preise zzgl. USt."
+    },
+    "trust": {
+      "heading": "Vertrauen und Datenschutz",
+      "items": {
+        "storage": "Ihre Dokumente werden in einem privaten Objektspeicher abgelegt, der Zugriff erfolgt ausschließlich über die Anwendung.",
+        "ocrProvider": "Die Texterkennung erfolgt durch einen europäischen KI-Anbieter (Mistral, Frankreich) als Auftragsverarbeiter.",
+        "noAdSharing": "Es findet keine Weitergabe Ihrer Daten an Dritte zu Werbezwecken statt.",
+        "deletion": "Auf Wunsch löschen wir Ihre Daten vollständig.",
+        "hosting": "Das Hosting ist innerhalb der EU geplant, der endgültige Anbieter steht noch nicht fest.",
+        "retention": "Gesetzliche Aufbewahrungspflichten, etwa nach der Abgabenordnung, bleiben Ihre eigene Verantwortung."
+      }
+    },
+    "faq": {
+      "heading": "Häufige Fragen",
+      "items": {
+        "scanner": {
+          "question": "Brauche ich einen Scanner?",
+          "answer": "Nein. Sie fotografieren Ihre Post mit dem Smartphone, Digipost erkennt die Kanten automatisch und erstellt daraus ein PDF."
+        },
+        "limit": {
+          "question": "Was passiert bei Erreichen des Limits?",
+          "answer": "Weitere Uploads werden abgelehnt, bis Sie Dokumente löschen, ein Paket dazubuchen oder Ihren Tarif wechseln. Es entstehen keine automatischen Zusatzkosten."
+        },
+        "visibility": {
+          "question": "Wer sieht meine Post?",
+          "answer": "Nur Mitglieder Ihres Arbeitsbereichs. Sie legen selbst fest, wer eingeladen wird."
+        },
+        "invite": {
+          "question": "Kann ich Kollegen einladen?",
+          "answer": "Ja. Als Administrator können Sie beliebig viele Kollegen in Ihren Arbeitsbereich einladen."
+        },
+        "eInvoice": {
+          "question": "Was ist mit der E-Rechnungspflicht?",
+          "answer": "Digipost erfasst eingehende Papierpost, auch Rechnungen, und macht sie durchsuchbar. Pflichten rund um den Empfang elektronischer Rechnungen prüfen Sie bitte eigenständig, zum Beispiel mit Ihrem Steuerberater."
+        },
+        "cancel": {
+          "question": "Kann ich kündigen?",
+          "answer": "Ja, ein Tarifwechsel oder eine Kündigung ist jederzeit möglich."
+        },
+        "originals": {
+          "question": "Was passiert mit den Papieroriginalen?",
+          "answer": "Die Originale bleiben bei Ihnen im Haus. Digipost erstellt lediglich eine digitale Kopie."
+        },
+        "security": {
+          "question": "Wie sicher sind meine Daten?",
+          "answer": "Ihre Dokumente liegen in einem privaten Objektspeicher, auf den nur über die Anwendung zugegriffen wird. Details finden Sie in unserer Datenschutzerklärung."
+        }
+      }
+    },
+    "closingCta": {
+      "heading": "Bereit, Ihren Posteingang zu digitalisieren?",
+      "cta": "Kostenlos starten"
+    },
+    "footer": {
+      "copyright": "© {year} Digipost",
+      "legalNotice": "Impressum",
+      "privacy": "Datenschutz",
+      "contactHeading": "Kontakt",
+      "contactPlaceholder": "Wird vor dem Start ergänzt (TODO)."
+    }
+  },
+  "Legal": {
+    "draftBanner": {
+      "heading": "Entwurf: rechtliche Prüfung erforderlich",
+      "body": "Dieser Text ist ein unverbindlicher Platzhalter und ersetzt keine Rechtsberatung. Er muss vor dem Start von einer Rechtsanwältin oder einem Rechtsanwalt geprüft und freigegeben werden."
+    },
+    "legalNotice": {
+      "heading": "Impressum",
+      "sections": {
+        "operator": {
+          "heading": "Angaben gemäß § 5 DDG",
+          "body": "TODO: Firmenname und Rechtsform\nTODO: Straße und Hausnummer\nTODO: Postleitzahl und Ort\nTODO: Vertretungsberechtigte Person"
+        },
+        "contact": {
+          "heading": "Kontakt",
+          "body": "TODO: E-Mail-Adresse\nTODO: Telefonnummer"
+        },
+        "register": {
+          "heading": "Registereintrag",
+          "body": "TODO: Registergericht und Registernummer, falls im Handelsregister eingetragen"
+        },
+        "vatId": {
+          "heading": "Umsatzsteuer-Identifikationsnummer",
+          "body": "TODO: USt-Identifikationsnummer gemäß § 27a UStG"
+        },
+        "responsible": {
+          "heading": "Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV",
+          "body": "TODO: Name und Anschrift der inhaltlich verantwortlichen Person"
+        }
+      },
+      "todo": {
+        "heading": "Vor dem Start noch auszufüllen",
+        "items": {
+          "companyName": "Firmenname und Rechtsform",
+          "address": "Vollständige Anschrift",
+          "representative": "Vertretungsberechtigte Person",
+          "register": "Handelsregistereintrag, falls vorhanden",
+          "vatId": "Umsatzsteuer-Identifikationsnummer",
+          "contact": "Kontakt-E-Mail und Telefonnummer",
+          "supervisoryAuthority": "Zuständige Aufsichtsbehörde, falls für die Tätigkeit erforderlich"
+        }
+      }
+    },
+    "privacy": {
+      "heading": "Datenschutzerklärung",
+      "sections": {
+        "controller": {
+          "heading": "Verantwortlicher",
+          "body": "TODO: Firmenname und Rechtsform\nTODO: Anschrift\nTODO: Kontakt-E-Mail-Adresse"
+        },
+        "purposes": {
+          "heading": "Zwecke der Verarbeitung",
+          "body": "Digipost verarbeitet die von Ihnen hochgeladene Post sowie importierte Finanzunterlagen (zum Beispiel Kontoauszüge und Auszahlungs- beziehungsweise Abrechnungsberichte von Zahlungsdienstleistern wie Stripe, Apple, Google oder PayPal), um sie zu speichern, per Texterkennung auszulesen, die Dokumentart automatisch zu erkennen und Zahlungen den passenden Buchungen zuzuordnen."
+        },
+        "legalBasis": {
+          "heading": "Rechtsgrundlagen",
+          "body": "TODO: Rechtsgrundlagen benennen (voraussichtlich Art. 6 Abs. 1 lit. b DSGVO für die Vertragserfüllung und Art. 6 Abs. 1 lit. f DSGVO für berechtigte Interessen). Vor dem Start rechtlich prüfen lassen."
+        },
+        "recipients": {
+          "heading": "Empfänger und Auftragsverarbeiter",
+          "body": "Zur Texterkennung und Kategorisierung wird Mistral AI (Mistral SAS, Frankreich) als Auftragsverarbeiter eingesetzt, der Inhalt Ihrer Post wird ihm zu diesem Zweck übermittelt. TODO: Anbieter für Objektspeicher und E-Mail-Versand benennen und jeweils als Auftragsverarbeiter mit Auftragsverarbeitungsvertrag (AVV) aufführen."
+        },
+        "storageLocation": {
+          "heading": "Speicherort",
+          "body": "Das Hosting ist innerhalb der EU geplant, der endgültige Anbieter steht noch nicht fest und wird hier vor dem Start ergänzt."
+        },
+        "retention": {
+          "heading": "Speicherdauer",
+          "body": "Ihre Dokumente werden gespeichert, bis Sie sie löschen oder ein Administrator Ihren gesamten Arbeitsbereich löscht (dabei werden alle Dokumente, Kontakte, Konten, Transaktionen und Teammitgliedschaften unwiderruflich entfernt). Ein abgelehnter Importvorschlag (zum Beispiel eine nicht erkannte Kontoauszugsdatei) wird automatisch 30 Tage nach der Ablehnung gelöscht, da hierfür keine Aufbewahrungspflicht besteht. Darüber hinaus wird nichts automatisch gelöscht; gesetzliche Aufbewahrungspflichten für Geschäftsunterlagen, etwa nach der Abgabenordnung, bleiben Ihre eigene Verantwortung."
+        },
+        "rights": {
+          "heading": "Ihre Rechte als betroffene Person",
+          "items": {
+            "access": "Auskunft über Ihre gespeicherten Daten",
+            "rectification": "Berichtigung unrichtiger Daten",
+            "erasure": "Löschung Ihrer Daten",
+            "restriction": "Einschränkung der Verarbeitung",
+            "portability": "Datenübertragbarkeit",
+            "objection": "Widerspruch gegen die Verarbeitung"
+          }
+        },
+        "complaint": {
+          "heading": "Beschwerderecht",
+          "body": "Sie haben das Recht, sich bei einer Datenschutzaufsichtsbehörde zu beschweren. TODO: zuständige Aufsichtsbehörde benennen."
+        }
+      }
+    }
+  },
+  "Login": {
+    "heading": "Anmelden",
+    "description": "Wir senden Ihnen einen Anmeldelink per E-Mail. Kein Passwort erforderlich.",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "sie@beispiel.de",
+    "submit": "Anmeldelink senden",
+    "submitPending": "Wird gesendet…",
+    "sentHeading": "Bitte prüfen Sie Ihr Postfach",
+    "sentDescription": "Wir haben einen Anmeldelink an {email} gesendet. Klicken Sie darauf, um fortzufahren. Der Link ist 15 Minuten gültig und kann nur einmal verwendet werden.",
+    "useDifferentEmail": "Andere E-Mail-Adresse verwenden",
+    "errors": {
+      "invalid_email": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      "rate_limited": "Es wurden zu viele Anmeldelinks angefordert. Bitte warten Sie eine Minute und versuchen Sie es erneut.",
+      "unknown": "Der Anmeldelink konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+      "INVALID_TOKEN": "Dieser Anmeldelink ist abgelaufen oder wurde bereits verwendet. Fordern Sie unten einen neuen an.",
+      "auth_failed": "Die Anmeldung ist fehlgeschlagen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "DashboardShell": {
+    "appName": "Digipost",
+    "toggleNav": "Navigation ein-/ausblenden",
+    "signOut": "Abmelden",
+    "nav": {
+      "label": "Hauptnavigation",
+      "soon": "Demnächst",
+      "toggleSection": "Bereich {section} ein- und ausklappen",
+      "sections": {
+        "post": "Post",
+        "money": "Finanzen",
+        "admin": "Verwaltung"
+      },
+      "start": "Start",
+      "inbox": "Posteingang",
+      "scan": "Post erfassen",
+      "emailIntake": "E-Mail-Eingang",
+      "accounts": "Konten",
+      "matching": "Zuordnung",
+      "openItems": "Offene Posten",
+      "closing": "Abschluss",
+      "contacts": "Kontakte",
+      "team": "Team",
+      "companySettings": "Firmendaten",
+      "intakeSettings": "Erkannte Quellen",
+      "billing": "Tarif & Nutzung"
+    },
+    "workspaceSwitcher": {
+      "toggle": "Firma wechseln",
+      "createAnother": "Weitere Firma anlegen",
+      "errors": {
+        "invalid_input": "Die ausgewählte Firma ist ungültig.",
+        "already_in_workspace": "Sie gehören diesem Arbeitsbereich bereits an.",
+        "unauthenticated": "Bitte melden Sie sich erneut an.",
+        "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+        "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+        "not_found": "Diese Firma steht Ihnen nicht zur Verfügung.",
+        "cannot_remove_self": "Sie können sich nicht selbst entfernen.",
+        "invitation_cap_reached": "Es sind bereits 50 offene Einladungen vorhanden.",
+        "invitation_not_found": "Diese Einladung existiert nicht mehr.",
+        "invitation_expired": "Diese Einladung ist abgelaufen.",
+        "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
+        "invitation_email_mismatch": "Diese Einladung wurde an eine andere E-Mail-Adresse gesendet.",
+        "confirmation_mismatch": "Die eingegebene Bestätigung stimmt nicht überein.",
+        "cannot_leave_as_admin": "Als Administrator können Sie den Arbeitsbereich nicht verlassen. Löschen Sie ihn stattdessen, oder übertragen Sie zuerst die Administratorrolle.",
+        "alias_too_generic": "Dieser Markenname ist zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz. Bitte verwenden Sie einen spezifischeren Namen.",
+        "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      }
+    }
+  },
+  "Onboarding": {
+    "heading": "Willkommen bei Digipost",
+    "description": "Legen Sie den Namen Ihrer Firma oder Ihres Teams an, um loszulegen.",
+    "additionalHeading": "Weitere Firma anlegen",
+    "additionalDescription": "Legen Sie eine weitere Firma an. Dokumente, Konten und Finanzen bleiben vollständig getrennt; Sie wechseln jederzeit über den Firmennamen in der Seitenleiste.",
+    "backToDashboard": "Zurück zum Dashboard",
+    "form": {
+      "nameLabel": "Firmenname",
+      "namePlaceholder": "z. B. Muster GmbH",
+      "submit": "Arbeitsbereich anlegen",
+      "submitPending": "Wird angelegt…",
+      "addressLine1Label": "Straße und Hausnummer",
+      "addressLine1Placeholder": "z. B. Musterstraße 1",
+      "addressLine2Label": "Adresszusatz (optional)",
+      "postalCodeLabel": "PLZ",
+      "cityLabel": "Ort",
+      "countryLabel": "Land",
+      "vatIdLabel": "USt-IdNr. (optional)",
+      "vatIdPlaceholder": "z. B. DE123456789",
+      "aliasesLabel": "Weitere Namen / Markennamen (optional)",
+      "aliasesHelp": "Ein Name pro Zeile, z. B. eine Marke oder Kurzform Ihres Firmennamens. Weitere Angaben können Sie später unter Firmendaten ergänzen.",
+      "aliasesPlaceholder": "z. B. Musterfirma"
+    },
+    "errors": {
+      "invalid_input": "Bitte geben Sie einen Firmennamen ein (bis zu 120 Zeichen).",
+      "already_in_workspace": "Sie gehören diesem Arbeitsbereich bereits an.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "not_found": "Dieser Eintrag existiert nicht mehr.",
+      "cannot_remove_self": "Sie können sich nicht selbst entfernen.",
+      "invitation_cap_reached": "Es sind bereits 50 offene Einladungen vorhanden.",
+      "invitation_not_found": "Diese Einladung existiert nicht mehr.",
+      "invitation_expired": "Diese Einladung ist abgelaufen.",
+      "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
+      "invitation_email_mismatch": "Diese Einladung wurde an eine andere E-Mail-Adresse gesendet.",
+      "confirmation_mismatch": "Die eingegebene Bestätigung stimmt nicht überein.",
+      "cannot_leave_as_admin": "Als Administrator können Sie den Arbeitsbereich nicht verlassen. Löschen Sie ihn stattdessen, oder übertragen Sie zuerst die Administratorrolle.",
+      "alias_too_generic": "Dieser Markenname ist zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz. Bitte verwenden Sie einen spezifischeren Namen.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "Invite": {
+    "heading": "Einladung",
+    "description": "{inviter} lädt Sie ein, dem Arbeitsbereich \"{workspace}\" beizutreten.",
+    "unknownInviter": "Ein Administrator",
+    "accept": "Einladung annehmen",
+    "acceptPending": "Wird angenommen…",
+    "errors": {
+      "invalid_input": "Diese Einladung ist ungültig.",
+      "invitation_not_found": "Diese Einladung existiert nicht oder wurde bereits widerrufen.",
+      "invitation_expired": "Diese Einladung ist abgelaufen. Bitten Sie den Administrator um eine neue Einladung.",
+      "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
+      "invitation_email_mismatch": "Diese Einladung wurde an eine andere E-Mail-Adresse gesendet. Bitte melden Sie sich mit dieser Adresse an.",
+      "already_in_workspace": "Sie gehören diesem Arbeitsbereich bereits an.",
+      "not_found": "Dieser Eintrag existiert nicht mehr.",
+      "cannot_remove_self": "Sie können sich nicht selbst entfernen.",
+      "invitation_cap_reached": "Es sind bereits 50 offene Einladungen vorhanden.",
+      "confirmation_mismatch": "Die eingegebene Bestätigung stimmt nicht überein.",
+      "cannot_leave_as_admin": "Als Administrator können Sie den Arbeitsbereich nicht verlassen. Löschen Sie ihn stattdessen, oder übertragen Sie zuerst die Administratorrolle.",
+      "alias_too_generic": "Dieser Markenname ist zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz. Bitte verwenden Sie einen spezifischeren Namen.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "Inbox": {
+    "heading": "Posteingang",
+    "scanCta": "Post erfassen",
+    "emptyState": "Noch keine Post erfasst. Scannen Sie Ihre erste Sendung, um loszulegen.",
+    "emptyFiltered": "Keine Treffer für diese Filter.",
+    "filters": {
+      "searchLabel": "Suche",
+      "searchPlaceholder": "Titel, Absender oder Inhalt",
+      "statusLabel": "Status",
+      "allStatuses": "Alle Status",
+      "submit": "Filtern",
+      "reset": "Filter zurücksetzen",
+      "directionLabel": "Richtung",
+      "allDirections": "Alle Richtungen",
+      "kindLabel": "Art",
+      "allKinds": "Alle Arten",
+      "paymentStatusLabel": "Zahlungsstatus",
+      "allPaymentStatuses": "Alle",
+      "sortLabel": "Sortierung",
+      "fromLabel": "Von",
+      "toLabel": "Bis"
+    },
+    "statusValues": {
+      "uploaded": "Hochgeladen",
+      "processing": "Wird verarbeitet",
+      "done": "Verarbeitet",
+      "failed": "Fehlgeschlagen"
+    },
+    "pagination": {
+      "previous": "Vorherige Seite",
+      "next": "Nächste Seite"
+    },
+    "directionValues": {
+      "incoming": "Eingang",
+      "outgoing": "Ausgang",
+      "unknown": "Unbekannt"
+    },
+    "companyProfileBanner": {
+      "message": "Bitte vervollständigen Sie Ihre Firmendaten, damit Digipost Sie auf Dokumenten erkennt.",
+      "cta": "Firmendaten vervollständigen",
+      "dismiss": "Schließen"
+    },
+    "intakePendingChip": "Bestätigung nötig",
+    "paymentStatusValues": {
+      "open": "Offen",
+      "overdue": "Überfällig",
+      "paid": "Bezahlt"
+    },
+    "sortValues": {
+      "documentDate": "Dokumentdatum",
+      "uploaded": "Zuletzt hochgeladen"
+    },
+    "receivedOn": "Eingang {date}"
+  },
+  "Scan": {
+    "heading": "Post erfassen",
+    "description": "Laden Sie ein PDF, Fotos Ihrer Post oder einen Kontoauszug (CAMT.053-XML, MT940 oder CSV) hoch. Fotos werden automatisch zu einem PDF zusammengefügt.",
+    "tabs": {
+      "label": "Erfassungsart",
+      "camera": "Kamera",
+      "file": "Datei hochladen"
+    },
+    "dropzone": "Dateien hierher ziehen oder klicken: PDF, JPG, PNG, Kontoauszug als CAMT.053-XML, MT940 oder CSV",
+    "fileNameLabel": "Bezeichnung (optional)",
+    "fileNamePlaceholder": "z. B. Rechnung Muster GmbH",
+    "submit": "Hochladen",
+    "submitPending": "Wird hochgeladen…",
+    "errors": {
+      "no_file": "Bitte wählen Sie mindestens eine Datei aus.",
+      "file_too_large": "Die Datei ist zu groß (maximal 4 MB).",
+      "fileTooLargeStructuredHint": "Bitte exportieren Sie Kontoauszüge monatsweise.",
+      "too_many_pages": "Zu viele Seiten (maximal 20).",
+      "invalid_pdf": "Diese PDF-Datei kann nicht gelesen werden oder ist verschlüsselt.",
+      "unsupported_file_type": "Nicht unterstützter Dateityp. Erlaubt sind PDF, JPEG, PNG sowie Kontoauszüge als CAMT.053-XML, MT940 oder CSV/TSV.",
+      "quota_total_exceeded": "Ihr Speicherlimit ist erreicht. Löschen Sie Dokumente oder erweitern Sie Ihren Tarif.",
+      "quota_monthly_exceeded": "Ihr monatliches Limit ist erreicht.",
+      "quotaLink": "Zum Tarif",
+      "quotaMemberHint": "Nur der Administrator kann den Tarif ändern oder Pakete kaufen. Wenden Sie sich an Ihren Administrator.",
+      "not_found": "Ihr Arbeitsbereich wurde nicht gefunden.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "unknown": "Der Upload ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      "duplicate_document": "Dieses Dokument ist bereits vorhanden.",
+      "duplicateLink": "Zum vorhandenen Dokument",
+      "unsafe_xml": "Diese XML-Datei enthält nicht unterstützte Elemente und wurde abgelehnt.",
+      "unrecognized_xml_format": "Dieses XML-Format wird nicht erkannt. Unterstützt werden Kontoauszüge im CAMT.053-Format.",
+      "empty_tabular_file": "Diese Datei enthält keine lesbaren Zeilen.",
+      "unreadable_tabular_file": "Diese Datei konnte nicht gelesen werden.",
+      "empty_mt940_file": "Diese MT940-Datei enthält keine lesbaren Umsätze.",
+      "unreadable_mt940_file": "Diese MT940-Datei konnte nicht gelesen werden.",
+      "mt940_too_large": "Diese MT940-Datei ist zu umfangreich, um verarbeitet zu werden."
+    },
+    "bulk": {
+      "splitImagesSwitch": "Jede Datei ist ein eigenes Dokument",
+      "counter": "{done} von {total}",
+      "stoppedByQuota": "Der Upload wurde gestoppt, weil Ihr Limit erreicht ist.",
+      "status": {
+        "waiting": "wartet",
+        "uploading": "lädt hoch",
+        "done": "fertig",
+        "error": "Fehler",
+        "skipped": "übersprungen"
+      }
+    }
+  },
+  "Scanner": {
+    "permission": {
+      "insecureContext": "Die Kamera ist nur über eine sichere Verbindung (HTTPS) verfügbar.",
+      "unsupported": "Ihr Browser unterstützt den Kamerazugriff nicht.",
+      "denied": "Der Kamerazugriff wurde verweigert. Bitte erlauben Sie den Zugriff in den Browsereinstellungen und versuchen Sie es erneut.",
+      "notFound": "Es wurde keine Kamera gefunden.",
+      "unknown": "Die Kamera konnte nicht gestartet werden.",
+      "retry": "Erneut versuchen",
+      "switchToFile": "Datei hochladen verwenden",
+      "captureFallback": "Foto mit der Kamera-App aufnehmen"
+    },
+    "camera": {
+      "starting": "Kamera wird gestartet…",
+      "autoCapture": "Automatisch aufnehmen",
+      "shutter": "Aufnehmen"
+    },
+    "review": {
+      "processing": "Wird verarbeitet…",
+      "filterDocument": "Dokument",
+      "filterColor": "Farbe",
+      "rotate": "Drehen",
+      "adjustCorners": "Ecken anpassen",
+      "retake": "Erneut aufnehmen",
+      "confirm": "Übernehmen"
+    },
+    "pageStrip": {
+      "listLabel": "Erfasste Seiten",
+      "pageAlt": "Seite {number}",
+      "moveLeft": "Nach links verschieben",
+      "moveRight": "Nach rechts verschieben",
+      "retake": "Erneut aufnehmen",
+      "remove": "Entfernen",
+      "addPage": "Seite hinzufügen",
+      "maxPagesReached": "Maximale Seitenzahl erreicht (20)."
+    },
+    "upload": {
+      "fileNameLabel": "Bezeichnung (optional)",
+      "fileNamePlaceholder": "z. B. Rechnung Muster GmbH",
+      "upload": "Hochladen",
+      "uploadPending": "Wird hochgeladen…",
+      "tooLarge": "Die erfassten Seiten sind zusammen zu groß. Bitte entfernen Sie eine Seite oder erfassen Sie sie erneut."
+    }
+  },
+  "DocumentDetail": {
+    "uploadDate": "Hochgeladen am",
+    "documentDate": "Datum",
+    "uploadedBy": "Hochgeladen von",
+    "status": "Status",
+    "statusValues": {
+      "uploaded": "Hochgeladen",
+      "processing": "Wird verarbeitet",
+      "done": "Verarbeitet",
+      "failed": "Fehlgeschlagen"
+    },
+    "ocrHeading": "Erkannter Text",
+    "ocrPending": "Texterkennung folgt.",
+    "ocrProcessing": "Wird gerade verarbeitet…",
+    "retryProcessing": "Erneut verarbeiten",
+    "testModeHint": "Testmodus: KI-Simulation aktiv",
+    "delete": "Löschen",
+    "deleteConfirm": "Dieses Dokument wirklich löschen?",
+    "deleteConfirmYes": "Ja, löschen",
+    "cancel": "Abbrechen",
+    "reclassifyOpen": "Dokumentart ändern",
+    "reclassifyKindLabel": "Neue Dokumentart",
+    "reclassifyKindPlaceholder": "Bitte auswählen",
+    "reclassifyHint": "Das Dokument wird mit dieser Dokumentart neu ausgewertet.",
+    "reclassifyConfirm": "Neu auswerten",
+    "reclassifyPending": "Wird gestartet…",
+    "errors": {
+      "invalid_input": "Diese Eingabe ist ungültig.",
+      "not_found": "Dieses Dokument existiert nicht mehr.",
+      "retry_not_allowed": "Dieses Dokument kann derzeit nicht erneut verarbeitet werden.",
+      "ai_auth_failed": "Die Verarbeitung ist fehlgeschlagen (Authentifizierung). Bitte wenden Sie sich an den Support.",
+      "ai_rate_limited": "Die Verarbeitung wurde vorübergehend limitiert und wird automatisch erneut versucht.",
+      "ai_timeout": "Die Verarbeitung hat zu lange gedauert und wird automatisch erneut versucht.",
+      "ai_unavailable": "Der Verarbeitungsdienst ist derzeit nicht erreichbar und wird automatisch erneut versucht.",
+      "ai_invalid_response": "Die Verarbeitung hat eine unerwartete Antwort erhalten.",
+      "ai_not_configured": "Die KI-Verarbeitung ist nicht konfiguriert. Bitte wenden Sie sich an den Support.",
+      "processing_failed": "Die Verarbeitung ist fehlgeschlagen.",
+      "unknown_job_kind": "Die Verarbeitung ist fehlgeschlagen.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "intake_not_pending": "Für dieses Dokument ist derzeit keine Bestätigung nötig.",
+      "mapping_validation_failed": "Die Zuordnung konnte nicht bestätigt werden. Bitte prüfen Sie die Probleme unten.",
+      "reclassify_not_allowed": "Die Dokumentart kann nur bei einem fertig verarbeiteten PDF-Dokument geändert werden.",
+      "kind_not_selectable": "Diese Dokumentart kann für ein PDF-Dokument nicht gewählt werden.",
+      "kind_unchanged": "Das Dokument hat bereits diese Dokumentart.",
+      "payment_linked": "Dieses Dokument ist bereits mit einer Zahlung verknüpft. Bitte heben Sie zuerst die Zahlungszuordnung auf.",
+      "payment_settled": "Dieses Dokument ist bereits über ein Verrechnungskonto ausgeglichen. Die Dokumentart kann deshalb nicht geändert werden.",
+      "unrecognized_mt940_format": "Dieses MT940-Format wird nicht erkannt.",
+      "mt940_too_large": "Diese MT940-Datei ist zu umfangreich, um verarbeitet zu werden.",
+      "unrecognized_apple_payment_summary": "Dieser Apple-Zahlungsbericht wird nicht erkannt.",
+      "apple_payment_summary_no_rows": "Dieser Apple-Zahlungsbericht enthält keine Zeilen.",
+      "unrecognized_google_play_earnings": "Dieser Google Play-Bericht wird nicht erkannt.",
+      "google_play_earnings_no_rows": "Dieser Google Play-Bericht enthält keine Zeilen.",
+      "google_play_earnings_unparseable_row": "Dieser Google Play-Bericht enthält eine nicht lesbare Zeile."
+    },
+    "directionValues": {
+      "incoming": "Eingang",
+      "outgoing": "Ausgang",
+      "unknown": "Unbekannt"
+    },
+    "invoiceHeading": "Rechnungsangaben",
+    "invoiceNumber": "Rechnungsnummer",
+    "invoiceAmount": "Betrag",
+    "invoiceDueDate": "Fällig am",
+    "invoicePaymentIban": "IBAN",
+    "invoicePaymentReference": "Verwendungszweck",
+    "invoicePaidNote": "Vermerk",
+    "contactsHeading": "Verknüpfte Kontakte",
+    "contactRoles": {
+      "sender": "Absender",
+      "recipient": "Empfänger",
+      "on_behalf_of": "im Auftrag von",
+      "mentioned": "erwähnt"
+    },
+    "contactUnverified": "unbestätigt",
+    "kindLabel": "Art",
+    "intakeHeading": "Bestätigung nötig",
+    "intakeKindLabel": "Erkannte Art",
+    "intakePlatformLabel": "Plattform",
+    "intakePlatformNone": "Keine",
+    "intakeReasonLabel": "Begründung",
+    "intakeMappingHeading": "Spaltenzuordnung",
+    "intakeMappingFieldColumn": "Unser Feld",
+    "intakeMappingSourceColumn": "Spalte in der Datei",
+    "intakeMappingSourceNone": "— keine Spalte —",
+    "intakeSampleHeading": "Erste Zeilen der Datei",
+    "intakeValidationHeading": "Probleme bei der Prüfung",
+    "intakeValidationOk": "Die Zuordnung wurde erfolgreich geprüft.",
+    "intakeConfirm": "Bestätigen und importieren",
+    "intakeConfirmPending": "Wird bestätigt…",
+    "intakeReject": "Ablehnen",
+    "intakeRejectPending": "Wird abgelehnt…",
+    "intakeRejectedNote": "Dieser Import wurde abgelehnt.",
+    "intakeImportedHeading": "Importierte Daten",
+    "intakeTransactionCount": "{count} Buchungen importiert",
+    "intakeRowCount": "{count} Zeilen importiert",
+    "intakeReconciles": "Der Kontoauszug ist rechnerisch stimmig.",
+    "intakeDoesNotReconcile": "Der Kontoauszug ist rechnerisch nicht stimmig. Bitte prüfen Sie den Auszug.",
+    "possibleDuplicateHint": "Dieses Dokument könnte bereits vorhanden sein (möglicherweise doppelt):",
+    "unclearDirectionHint": "Die Richtung dieses Dokuments konnte nicht sicher bestimmt werden. Bitte prüfen Sie, ob die Dokumentart stimmt."
+  },
+  "Team": {
+    "heading": "Team",
+    "description": "Mitglieder und offene Einladungen Ihres Arbeitsbereichs.",
+    "members": {
+      "heading": "Mitglieder",
+      "joinedAt": "Beigetreten am {date}",
+      "roleAdmin": "Administrator",
+      "roleMember": "Mitglied",
+      "remove": "Entfernen",
+      "removeConfirm": "Dieses Mitglied entfernen?",
+      "removeConfirmYes": "Ja, entfernen",
+      "cancel": "Abbrechen",
+      "you": "Sie"
+    },
+    "invitations": {
+      "heading": "Offene Einladungen",
+      "empty": "Keine offenen Einladungen.",
+      "expiresAt": "Läuft ab am {date}",
+      "revoke": "Widerrufen"
+    },
+    "inviteForm": {
+      "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "kollege@beispiel.de",
+      "submit": "Einladen",
+      "submitPending": "Wird eingeladen…"
+    },
+    "leaveWorkspace": {
+      "start": "Arbeitsbereich verlassen",
+      "confirm": "Arbeitsbereich wirklich verlassen?",
+      "confirmYes": "Ja, verlassen",
+      "cancel": "Abbrechen"
+    },
+    "errors": {
+      "invalid_input": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+      "invitation_cap_reached": "Es sind bereits 50 offene Einladungen vorhanden. Bitte widerrufen Sie zuerst eine Einladung.",
+      "invitation_not_found": "Diese Einladung existiert nicht mehr.",
+      "invitation_expired": "Diese Einladung ist abgelaufen.",
+      "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
+      "invitation_email_mismatch": "Diese Einladung wurde an eine andere E-Mail-Adresse gesendet.",
+      "already_in_workspace": "Diese Person gehört diesem Arbeitsbereich bereits an.",
+      "not_found": "Dieser Eintrag existiert nicht mehr.",
+      "cannot_remove_self": "Sie können sich nicht selbst entfernen.",
+      "confirmation_mismatch": "Die eingegebene Bestätigung stimmt nicht überein.",
+      "cannot_leave_as_admin": "Als Administrator können Sie den Arbeitsbereich nicht verlassen. Löschen Sie ihn stattdessen, oder übertragen Sie zuerst die Administratorrolle.",
+      "alias_too_generic": "Dieser Markenname ist zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz. Bitte verwenden Sie einen spezifischeren Namen.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "Billing": {
+    "heading": "Tarif & Nutzung",
+    "description": "Ihr aktueller Tarif, Ihre Nutzung und in diesem Monat gekaufte Digitalisierungspakete.",
+    "testModeBadge": "Testmodus",
+    "memberHint": "Nur der Administrator kann den Tarif ändern oder Pakete kaufen. Wenden Sie sich an Ihren Administrator.",
+    "tiers": {
+      "free": {
+        "name": "Free"
+      },
+      "starter": {
+        "name": "Starter"
+      },
+      "pro": {
+        "name": "Pro"
+      },
+      "unlimited": {
+        "name": "Unlimited"
+      }
+    },
+    "usage": {
+      "totalLabel": "Gespeicherte Dokumente",
+      "monthlyLabel": "Neue Dokumente diesen Monat",
+      "unlimited": "kein Limit",
+      "noMonthlyLimit": "kein monatliches Limit",
+      "extraMonthlyQuota": "Davon {count} Dokumente zusätzliche Paket-Kapazität für diesen Monat."
+    },
+    "purchases": {
+      "heading": "Gekaufte Pakete (dieser Monat)",
+      "empty": "In diesem Monat wurden keine Pakete gekauft."
+    },
+    "packages": {
+      "heading": "Digitalisierungspaket kaufen",
+      "description": "Ein Paket erhöht Ihr monatliches Limit nur für den aktuellen Kalendermonat und hebt niemals Ihr Gesamtlimit an.",
+      "notAvailableOnFree": "Pakete sind im Tarif Free nicht verfügbar, da Free kein monatliches Limit hat.",
+      "extraDocuments": "+{count} Dokumente",
+      "submit": "Kaufen",
+      "submitPending": "Wird gekauft…",
+      "s": {
+        "name": "Paket S"
+      },
+      "m": {
+        "name": "Paket M"
+      },
+      "l": {
+        "name": "Paket L"
+      }
+    },
+    "tierChange": {
+      "heading": "Tarif ändern",
+      "label": "Neuer Tarif",
+      "submit": "Tarif ändern",
+      "submitPending": "Wird geändert…"
+    },
+    "notConfigured": {
+      "notice": "Die Zahlungsanbindung ist noch nicht eingerichtet. Ein Tarifwechsel oder Paketkauf ist derzeit nicht möglich.",
+      "contactHint": "Bitte kontaktieren Sie uns, wenn Sie Ihren Tarif ändern oder ein Paket kaufen möchten."
+    },
+    "errors": {
+      "invalid_input": "Ungültige Eingabe.",
+      "not_found": "Ihr Arbeitsbereich wurde nicht gefunden.",
+      "unknown_tier": "Dieser Tarif existiert nicht.",
+      "unknown_package": "Dieses Paket existiert nicht.",
+      "downgrade_below_stored_count": "Sie speichern aktuell {stored} Dokumente. Das ist mehr als das Limit von {limit} im gewählten Tarif. Löschen Sie zuerst Dokumente oder wählen Sie einen höheren Tarif.",
+      "packages_not_available_on_free": "Pakete sind im Tarif Free nicht verfügbar.",
+      "billing_not_configured": "Die Zahlungsanbindung ist noch nicht eingerichtet.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    }
+  },
+  "Contacts": {
+    "heading": "Kontakte",
+    "description": "Firmenkontakte, die aus Ihrer Post erkannt wurden, oder die Sie selbst angelegt haben.",
+    "createCta": "Kontakt anlegen",
+    "createHeading": "Neuen Kontakt anlegen",
+    "unverifiedBadge": "Unbestätigt",
+    "documentsCount": "{count, plural, =0 {Keine Dokumente} one {# Dokument} other {# Dokumente}}",
+    "pendingProposalsCount": "{count, plural, one {# Vorschlag} other {# Vorschläge}}",
+    "proposalsHeading": "{count, plural, one {Ein offener Änderungsvorschlag} other {# offene Änderungsvorschläge}}",
+    "emptyState": "Noch keine Kontakte vorhanden.",
+    "emptyFiltered": "Keine Kontakte gefunden.",
+    "filters": {
+      "searchLabel": "Suche",
+      "searchPlaceholder": "Name, USt-IdNr. oder Kundennummer",
+      "relationTypeLabel": "Beziehungstyp",
+      "allRelationTypes": "Alle Beziehungstypen",
+      "onlyUnverified": "Nur unbestätigte",
+      "submit": "Filtern",
+      "reset": "Filter zurücksetzen"
+    },
+    "pagination": {
+      "previous": "Zurück",
+      "next": "Weiter"
+    },
+    "relationTypeValues": {
+      "supplier": "Lieferant",
+      "customer": "Kunde",
+      "authority": "Behörde",
+      "insurance": "Versicherung",
+      "bank": "Bank",
+      "other": "Sonstiges"
+    },
+    "fieldLabels": {
+      "legalForm": "Rechtsform",
+      "addressLine1": "Adresszeile 1",
+      "addressLine2": "Adresszeile 2",
+      "postalCode": "PLZ",
+      "city": "Ort",
+      "country": "Land",
+      "vatId": "USt-IdNr.",
+      "taxNumber": "Steuernummer",
+      "registerCourt": "Registergericht",
+      "registerNumber": "Registernummer",
+      "leitwegId": "Leitweg-ID",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "bankName": "Bank",
+      "accountHolder": "Kontoinhaber",
+      "sepaCreditorId": "SEPA-Gläubiger-ID",
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "website": "Website",
+      "contactPerson": "Ansprechpartner",
+      "customerNumber": "Kundennummer",
+      "supplierNumber": "Lieferantennummer",
+      "paymentTermsDays": "Zahlungsziel (Tage)",
+      "relationType": "Beziehungstyp",
+      "notes": "Notizen"
+    },
+    "form": {
+      "sections": {
+        "identity": "Identität",
+        "tax": "Steuer und Register",
+        "bank": "Bank",
+        "communication": "Kommunikation",
+        "relationship": "Geschäftsbeziehung",
+        "notes": "Notizen"
+      },
+      "fields": {
+        "name": "Name",
+        "legalForm": "Rechtsform",
+        "addressLine1": "Adresszeile 1",
+        "addressLine2": "Adresszeile 2",
+        "postalCode": "PLZ",
+        "city": "Ort",
+        "country": "Land",
+        "vatId": "USt-IdNr.",
+        "taxNumber": "Steuernummer",
+        "registerCourt": "Registergericht",
+        "registerNumber": "Registernummer",
+        "leitwegId": "Leitweg-ID",
+        "iban": "IBAN",
+        "bic": "BIC",
+        "bankName": "Bank",
+        "accountHolder": "Kontoinhaber",
+        "sepaCreditorId": "SEPA-Gläubiger-ID",
+        "phone": "Telefon",
+        "email": "E-Mail",
+        "website": "Website",
+        "contactPerson": "Ansprechpartner",
+        "customerNumber": "Kundennummer",
+        "supplierNumber": "Lieferantennummer",
+        "paymentTermsDays": "Zahlungsziel (Tage)",
+        "relationType": "Beziehungstyp",
+        "relationTypeNone": "Kein Beziehungstyp",
+        "notes": "Notizen"
+      },
+      "submitCreate": "Kontakt anlegen",
+      "submitUpdate": "Speichern",
+      "submitPending": "Wird gespeichert…",
+      "cancel": "Abbrechen",
+      "errors": {
+        "invalid_input": "Ungültige Eingabe. Bitte prüfen Sie Ihre Angaben.",
+        "not_found": "Dieser Kontakt existiert nicht mehr.",
+        "document_not_found": "Dieses Dokument existiert nicht mehr.",
+        "proposal_not_found": "Dieser Änderungsvorschlag existiert nicht mehr.",
+        "cannot_merge_self": "Sie können einen Kontakt nicht mit sich selbst zusammenführen.",
+        "alias_too_generic": "Dieser Name ist als Markenname zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz.",
+        "invalid_iban": "Die IBAN dieses Kontakts ist ungültig und kann nicht gespeichert werden.",
+        "contact_missing_iban": "Dieser Kontakt hat keine gültige IBAN, die als eigenes Konto gespeichert werden kann.",
+        "unauthenticated": "Bitte melden Sie sich erneut an.",
+        "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+        "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+        "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      }
+    },
+    "detail": {
+      "unverifiedBadge": "Unbestätigt",
+      "verifiedAt": "Bestätigt am {date} von {by}",
+      "neverVerified": "Noch nicht bestätigt.",
+      "verify": "Bestätigen",
+      "edit": "Bearbeiten",
+      "documentsHeading": "Verknüpfte Dokumente",
+      "documentsEmpty": "Keine verknüpften Dokumente.",
+      "unlinkDocument": "Entfernen",
+      "documentRoleValues": {
+        "sender": "Absender",
+        "recipient": "Empfänger",
+        "on_behalf_of": "Im Auftrag von",
+        "mentioned": "Erwähnt"
+      },
+      "proposalsHeading": "Änderungsvorschläge",
+      "proposalIbanWarning": "Die Bankverbindung hat sich in einem Dokument geändert. Prüfen Sie diesen Änderungsvorschlag sorgfältig, bevor Sie ihn annehmen: eine geänderte IBAN auf einer sonst vertrauten Rechnung ist ein typisches Muster bei Rechnungsbetrug.",
+      "proposalCurrent": "Bisheriger Wert",
+      "proposalProposed": "Vorgeschlagener Wert",
+      "proposalAccept": "Annehmen",
+      "proposalReject": "Ablehnen",
+      "mergeHeading": "Kontakte zusammenführen",
+      "merge": "Zusammenführen",
+      "mergeSearchPlaceholder": "Kontakt suchen…",
+      "mergeNoResults": "Keine passenden Kontakte gefunden.",
+      "mergeConfirm": "\"{source}\" wird mit \"{target}\" zusammengeführt: Alle verknüpften Dokumente und offenen Änderungsvorschläge werden zu \"{target}\" verschoben, leere Felder von \"{target}\" werden aus \"{source}\" übernommen. \"{source}\" wird anschließend gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "mergeConfirmYes": "Ja, zusammenführen",
+      "cancel": "Abbrechen",
+      "correctionsHeading": "Korrekturen",
+      "markOwnCompany": "Das sind wir",
+      "markOwnCompanyConfirm": "Dieser Kontakt ist Ihr eigenes Unternehmen. Der Name wird als weiterer Name Ihres Unternehmens gespeichert und der Kontakt gelöscht. Dokumente bleiben erhalten.",
+      "markOwnCompanyConfirmYes": "Ja, speichern und löschen",
+      "markOwnBank": "Das ist unsere Bank",
+      "markOwnBankConfirm": "Dieser Kontakt ist Ihre Bank. Die IBAN wird als Ihr eigenes Konto gespeichert und der Kontakt gelöscht. Dokumente bleiben erhalten.",
+      "markOwnBankConfirmYes": "Ja, speichern und löschen",
+      "deleteConfirm": "Diesen Kontakt löschen? Verknüpfte Dokumente bleiben erhalten.",
+      "deleteConfirmYes": "Ja, löschen",
+      "delete": "Löschen",
+      "errors": {
+        "invalid_input": "Ungültige Eingabe. Bitte prüfen Sie Ihre Angaben.",
+        "not_found": "Dieser Kontakt existiert nicht mehr.",
+        "document_not_found": "Dieses Dokument existiert nicht mehr.",
+        "proposal_not_found": "Dieser Änderungsvorschlag existiert nicht mehr.",
+        "cannot_merge_self": "Sie können einen Kontakt nicht mit sich selbst zusammenführen.",
+        "alias_too_generic": "Dieser Name ist als Markenname zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz.",
+        "invalid_iban": "Die IBAN dieses Kontakts ist ungültig und kann nicht gespeichert werden.",
+        "contact_missing_iban": "Dieser Kontakt hat keine gültige IBAN, die als eigenes Konto gespeichert werden kann.",
+        "unauthenticated": "Bitte melden Sie sich erneut an.",
+        "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+        "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+        "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      }
+    }
+  },
+  "CompanySettings": {
+    "heading": "Firmendaten",
+    "description": "Diese Angaben helfen Digipost, Ihr eigenes Unternehmen auf gescannten Dokumenten zu erkennen.",
+    "workspaceNameLabel": "Firmenname",
+    "addressLine1Label": "Straße und Hausnummer",
+    "addressLine2Label": "Adresszusatz (optional)",
+    "postalCodeLabel": "PLZ",
+    "cityLabel": "Ort",
+    "countryLabel": "Land",
+    "vatIdLabel": "USt-IdNr. (optional)",
+    "vatIdPlaceholder": "z. B. DE123456789",
+    "extendedHeading": "Erweiterte Angaben",
+    "extendedDescription": "Diese Angaben helfen der KI zusätzlich, Ihr Unternehmen von Ihren Kunden, Lieferanten und Ihrer Bank zu unterscheiden.",
+    "aliasesLabel": "Weitere Namen / Markennamen (optional)",
+    "aliasesHelp": "Ein Name pro Zeile, z. B. eine Marke oder Kurzform Ihres Firmennamens.",
+    "aliasesPlaceholder": "z. B. Musterfirma",
+    "ibansLabel": "Eigene IBANs (optional)",
+    "ibansHelp": "Eine IBAN pro Zeile. So erkennt die KI Ihre eigenen Konten und verwechselt sie nicht mit einem Geschäftskontakt.",
+    "ibansPlaceholder": "z. B. DE89 3704 0044 0532 0130 00",
+    "domainsLabel": "Eigene Domains (optional)",
+    "domainsHelp": "Eine Domain pro Zeile, z. B. Ihre Website oder E-Mail-Domain.",
+    "domainsPlaceholder": "z. B. musterfirma.de",
+    "taxNumberLabel": "Steuernummer (optional)",
+    "registerCourtLabel": "Registergericht (optional)",
+    "registerNumberLabel": "Registernummer (optional)",
+    "profileTextLabel": "Was soll die KI über Ihr Unternehmen wissen?",
+    "profileTextHelp": "Hilft der KI, Sie von Ihren Kunden, Lieferanten und Ihrer Bank zu unterscheiden. Nennen Sie zum Beispiel Markennamen, Ihre Bank und womit Sie Ihr Geld verdienen.",
+    "profileTextPlaceholder": "Wir treten als \"musterfirma\" auf, nicht mit dem vollen GbR-Namen. Unsere Bank ist MUSTERBANK, sie ist weder Kunde noch Lieferant.",
+    "submit": "Speichern",
+    "submitPending": "Wird gespeichert…",
+    "saved": "Gespeichert.",
+    "errors": {
+      "invalid_input": "Bitte prüfen Sie Ihre Angaben.",
+      "not_found": "Dieser Arbeitsbereich existiert nicht mehr.",
+      "alias_too_generic": "Einer der weiteren Namen ist zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz. Bitte verwenden Sie einen spezifischeren Namen.",
+      "invalid_iban": "Eine der eingegebenen IBANs ist ungültig. Bitte prüfen Sie die Eingabe.",
+      "invalid_domain": "Eine der eingegebenen Domains ist ungültig. Bitte geben Sie z. B. \"beispiel.de\" ein.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+      "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+    },
+    "dangerZone": {
+      "heading": "Gefahrenzone",
+      "description": "Das Löschen des Arbeitsbereichs entfernt unwiderruflich alle Dokumente, Kontakte, Konten, Transaktionen und Teammitglieder.",
+      "start": "Arbeitsbereich löschen",
+      "confirmPrompt": "Geben Sie zur Bestätigung den Namen des Arbeitsbereichs ein:",
+      "confirmLabel": "Name des Arbeitsbereichs",
+      "submit": "Endgültig löschen",
+      "submitPending": "Wird gelöscht…",
+      "cancel": "Abbrechen",
+      "errors": {
+        "invalid_input": "Bitte geben Sie den Namen des Arbeitsbereichs ein.",
+        "already_in_workspace": "Sie gehören bereits zu einem Arbeitsbereich.",
+        "not_found": "Dieser Arbeitsbereich existiert nicht mehr.",
+        "cannot_remove_self": "Sie können sich nicht selbst entfernen.",
+        "invitation_cap_reached": "Es sind bereits 50 offene Einladungen vorhanden.",
+        "invitation_not_found": "Diese Einladung existiert nicht mehr.",
+        "invitation_expired": "Diese Einladung ist abgelaufen.",
+        "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
+        "invitation_email_mismatch": "Diese Einladung wurde an eine andere E-Mail-Adresse gesendet.",
+        "confirmation_mismatch": "Der eingegebene Name stimmt nicht mit dem Namen des Arbeitsbereichs überein.",
+        "cannot_leave_as_admin": "Als Administrator können Sie den Arbeitsbereich nicht verlassen. Löschen Sie ihn stattdessen.",
+        "alias_too_generic": "Dieser Markenname ist zu allgemein (z. B. nur eine Rechtsform wie \"GmbH\") oder zu kurz. Bitte verwenden Sie einen spezifischeren Namen.",
+        "unauthenticated": "Bitte melden Sie sich erneut an.",
+        "no_workspace": "Sie gehören zu keinem Arbeitsbereich.",
+        "forbidden": "Dafür fehlt Ihnen die Berechtigung.",
+        "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+      }
+    }
+  },
+  "DocumentKinds": {
+    "letter": "Brief",
+    "incoming_invoice": "Eingangsrechnung",
+    "outgoing_invoice": "Ausgangsrechnung",
+    "reminder": "Mahnung",
+    "receipt": "Beleg",
+    "bank_statement": "Kontoauszug",
+    "payout_report": "Auszahlungsbericht",
+    "platform_settlement": "Plattformabrechnung",
+    "contract": "Vertrag",
+    "authority_letter": "Behördenschreiben",
+    "other": "Sonstiges"
+  },
+  "SettlementPlatforms": {
+    "stripe": "Stripe",
+    "apple": "Apple",
+    "google": "Google",
+    "paypal": "PayPal",
+    "amazon": "Amazon",
+    "other": "Sonstige"
+  },
+  "SemanticFields": {
+    "bookingDate": "Buchungsdatum",
+    "valueDate": "Valutadatum",
+    "amount": "Betrag",
+    "currency": "Währung",
+    "creditDebit": "Soll/Haben-Kennzeichen",
+    "counterpartyName": "Name Gegenpartei",
+    "counterpartyIban": "IBAN Gegenpartei",
+    "reference": "Verwendungszweck",
+    "description": "Beschreibung",
+    "endToEndId": "Ende-zu-Ende-Referenz",
+    "fee": "Gebühr",
+    "gross": "Brutto",
+    "net": "Netto",
+    "payoutId": "Auszahlungs-ID",
+    "customerName": "Kundenname",
+    "customerEmail": "Kunden-E-Mail",
+    "invoiceNumber": "Rechnungsnummer",
+    "chargeId": "Belastungs-ID",
+    "productName": "Produktname",
+    "quantity": "Menge",
+    "countryOfSale": "Verkaufsland"
+  },
+  "IntakeSettings": {
+    "heading": "Erkannte Quellen",
+    "description": "Einmal bestätigte Spaltenzuordnungen für Kontoauszüge und Abrechnungen. Die nächste Datei mit demselben Format wird ohne erneute Bestätigung importiert.",
+    "columnKind": "Art",
+    "columnPlatform": "Plattform",
+    "columnUseCount": "Verwendet",
+    "columnLastUsedAt": "Zuletzt verwendet",
+    "reset": "Zuordnung zurücksetzen",
+    "resetPending": "Wird zurückgesetzt…",
+    "empty": "Noch keine Quelle bestätigt.",
+    "resetConfirm": "Diese Zuordnung wirklich zurücksetzen? Die nächste passende Datei muss erneut bestätigt werden.",
+    "resetConfirmYes": "Ja, zurücksetzen",
+    "cancel": "Abbrechen"
+  },
+  "Finance": {
+    "heading": "Finanzen",
+    "description": "Bankkonten und importierte Kontobewegungen. Dieser Bereich ist nur für Administratoren sichtbar, da Kontoauszüge Gehälter und andere private Abbuchungen offenlegen können.",
+    "createAccount": "Konto anlegen",
+    "createAccountHeading": "Neues Konto",
+    "editAccount": "Bearbeiten",
+    "emptyAccounts": "Noch keine Konten vorhanden. Konten werden automatisch beim Import eines Kontoauszugs angelegt oder können hier manuell erstellt werden.",
+    "balanceApprox": "Näherungswert, keine Kontoauszugsdaten",
+    "coverageGapCount": "{count, plural, one {# Lücke in der Abdeckung} other {# Lücken in der Abdeckung}}",
+    "mixedCurrencyWarning": "Mehrere Währungen, Saldo unvollständig",
+    "pendingAccountsHeading": "{count, plural, one {Konto zuordnen nötig} other {Konten zuordnen nötig}}",
+    "pendingAccountsDescription": "Diese Kontoauszüge wurden bestätigt, enthalten aber keine eigene Kontonummer, sodass kein Konto automatisch erkannt werden konnte. Bitte ein bestehendes Konto zuordnen (bei Bedarf zuerst oben ein neues Konto anlegen).",
+    "selectAccountPlaceholder": "Konto wählen…",
+    "assignAccount": "Importieren",
+    "form": {
+      "type": "Typ",
+      "typeValues": {
+        "bank": "Bankkonto",
+        "clearing": "Verrechnungskonto"
+      },
+      "name": "Name",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "currency": "Währung",
+      "holder": "Kontoinhaber",
+      "platform": "Plattform",
+      "submit": "Speichern",
+      "cancel": "Abbrechen",
+      "errors": {
+        "invalid_input": "Bitte die markierten Felder prüfen.",
+        "not_found": "Konto wurde nicht gefunden.",
+        "duplicate_iban": "Diese IBAN gehört bereits zu einem anderen Konto.",
+        "not_importable": "Dieses Dokument kann nicht importiert werden.",
+        "iban_locked_by_imports": "Die IBAN kann nicht mehr geändert werden, da für dieses Konto bereits Kontoauszüge importiert wurden. Legen Sie stattdessen ein neues Konto an.",
+        "not_bank_account": "Dieses Konto ist ein Verrechnungskonto und kann keine Kontoauszüge empfangen.",
+        "unauthenticated": "Bitte erneut anmelden.",
+        "no_workspace": "Kein Team gefunden.",
+        "forbidden": "Dafür fehlt die Berechtigung.",
+        "unknown": "Unerwarteter Fehler. Bitte erneut versuchen.",
+        "clearing_account_exists": "Für diesen Kontakt gibt es bereits ein Verrechnungskonto."
+      }
+    },
+    "detail": {
+      "importHistoryHeading": "Importhistorie",
+      "noImports": "Noch keine Importe für dieses Konto.",
+      "rowsImported": "{count, plural, one {# neu importiert} other {# neu importiert}}",
+      "rowsDuplicate": "{count, plural, one {# bereits bekannt} other {# bereits bekannt}}",
+      "balanceMismatch": "Saldo stimmt nicht überein",
+      "reimport": "Erneut importieren",
+      "transactionsHeading": "Transaktionen",
+      "emptyState": "Noch keine Transaktionen für dieses Konto.",
+      "emptyFiltered": "Keine Transaktionen für diese Filter.",
+      "columns": {
+        "bookingDate": "Datum",
+        "counterparty": "Zahlungspartner",
+        "remittanceText": "Verwendungszweck",
+        "amount": "Betrag"
+      },
+      "filters": {
+        "searchLabel": "Suche",
+        "dateFromLabel": "Von",
+        "dateToLabel": "Bis",
+        "minAmountLabel": "Betrag ab (Cent)",
+        "maxAmountLabel": "Betrag bis (Cent)",
+        "creditDebitLabel": "Richtung",
+        "allCreditDebit": "Alle",
+        "credit": "Eingang",
+        "debit": "Ausgang",
+        "submit": "Filtern",
+        "reset": "Filter zurücksetzen"
+      },
+      "pagination": {
+        "previous": "Zurück",
+        "next": "Weiter"
+      },
+      "errors": {
+        "invalid_input": "Bitte die markierten Felder prüfen.",
+        "not_found": "Konto wurde nicht gefunden.",
+        "duplicate_iban": "Diese IBAN gehört bereits zu einem anderen Konto.",
+        "not_importable": "Dieses Dokument kann nicht importiert werden.",
+        "iban_locked_by_imports": "Die IBAN kann nicht mehr geändert werden, da für dieses Konto bereits Kontoauszüge importiert wurden. Legen Sie stattdessen ein neues Konto an.",
+        "not_bank_account": "Dieses Konto ist ein Verrechnungskonto und kann keine Kontoauszüge empfangen.",
+        "unauthenticated": "Bitte erneut anmelden.",
+        "no_workspace": "Kein Team gefunden.",
+        "forbidden": "Dafür fehlt die Berechtigung.",
+        "unknown": "Unerwarteter Fehler. Bitte erneut versuchen.",
+        "clearing_account_exists": "Für diesen Kontakt gibt es bereits ein Verrechnungskonto."
+      },
+      "contactClearing": {
+        "balanceLabel": "Im erfassten Zeitraum nicht erklärt: {amount}",
+        "balanceExplanation": "Dieser Betrag ist die Differenz zwischen allen erfassten Rechnungen dieses Kontakts und allen erfassten Abbuchungen an ihn. Er ist keine bestätigte Forderung und keine Verbindlichkeit, sondern der Teil, den die vorliegenden Belege und Buchungen nicht erklären.",
+        "openingBalanceCaveat": "Abbuchungen, die vor der ersten erfassten Rechnung liegen, gehören vermutlich zu Zeiträumen, für die hier keine Rechnungen vorliegen. Solange diese fehlen, bleibt der Anfangsbestand dieses Kontos unbekannt."
+      }
+    },
+    "clearingAccountBadge": "Verrechnungskonto",
+    "clearingAccountHint": "Guthaben bei der Plattform",
+    "contactClearing": {
+      "heading": "Verrechnungskonto",
+      "description": "Für Lieferanten, deren Rechnungen und Abbuchungen sich nie eins zu eins zuordnen lassen (zum Beispiel Werbung, die nach Ausgabengrenze abgebucht wird). Statt einzelner Zuordnungen laufen alle Rechnungen und alle Abbuchungen dieses Kontakts auf ein eigenes Konto, und Sie sehen dort nur noch die verbleibende Differenz.",
+      "existsDescription": "Rechnungen und Abbuchungen dieses Kontakts laufen über dieses Konto. Zahlungsvorschläge werden für diesen Kontakt nicht mehr erstellt.",
+      "create": "Verrechnungskonto anlegen",
+      "cancel": "Abbrechen",
+      "paymentNameLabel": "Name auf dem Kontoauszug (optional)",
+      "paymentNamePlaceholder": "z. B. FACEBK",
+      "paymentNameHint": "Nur nötig, wenn die Abbuchungen auf dem Kontoauszug anders heißen als der Kontakt. Der Name wird wie ein gelernter Zahlungsname gespeichert und sorgt dafür, dass vorhandene und künftige Abbuchungen diesem Kontakt zugeordnet werden.",
+      "listHint": "Verrechnungskonto für einen Kontakt"
+    }
+  },
+  "Payments": {
+    "statusValues": {
+      "open": "Offen",
+      "partially_paid": "Teilweise bezahlt",
+      "paid": "Bezahlt",
+      "overdue": "Überfällig",
+      "settled": "Erledigt",
+      "no_document_needed": "Kein Beleg nötig",
+      "not_applicable": "Nicht zutreffend"
+    },
+    "paidAt": "Bezahlt am {date}",
+    "sectionHeading": "Zahlungsstatus",
+    "matchedHeading": "Verknüpfte Transaktionen",
+    "matchedDateOnly": "Zahlung am {date}",
+    "suggestionsHeading": "Vorschläge",
+    "confirm": "Bestätigen",
+    "reject": "Ablehnen",
+    "unlink": "Verknüpfung aufheben",
+    "reasonValues": {
+      "invoice_number_in_remittance": "Rechnungsnummer im Verwendungszweck gefunden",
+      "customer_number_in_remittance": "Kundennummer im Verwendungszweck gefunden",
+      "statement_reference_in_document": "Referenz der Kartenzahlung steht im Beleg",
+      "amount_exact": "Betrag stimmt exakt überein",
+      "amount_within_skonto": "Betrag stimmt im Rahmen des Skontos überein",
+      "iban_match": "IBAN stimmt überein",
+      "counterparty_name_match": "Name des Zahlungspartners stimmt überein",
+      "date_within_window": "Datum passt zeitlich",
+      "subset_sum": "Summe mehrerer offener Posten passt",
+      "partial_payment": "Teilzahlung",
+      "collective_payment": "Sammelzahlung",
+      "alias_learned": "Gelernter Alias für diesen Zahlungspartner",
+      "ai_ranked": "Von der KI vorgeschlagen",
+      "platform_payout_matched": "Auszahlung dem Bericht zugeordnet"
+    },
+    "reminderAlreadyPaid": "Diese Rechnung wurde bereits am {date} bezahlt.",
+    "duplicateWarning": "Achtung: Für dieses Dokument sind mehrere Zahlungen erfasst.",
+    "markSettled": "Ohne Zahlung erledigt",
+    "markSettledConfirm": "Dieses Dokument als erledigt markieren, ohne dass eine Zahlung über die App erfasst wird?",
+    "markSettledYes": "Ja, erledigt",
+    "cancel": "Abbrechen",
+    "manualLink": {
+      "toggle": "Transaktion manuell verknüpfen",
+      "searchLabel": "Transaktion suchen",
+      "searchPlaceholder": "Betrag, Name oder Verwendungszweck…",
+      "empty": "Keine passenden Transaktionen gefunden.",
+      "link": "Verknüpfen",
+      "cancel": "Abbrechen"
+    },
+    "errors": {
+      "invalid_input": "Bitte die markierten Felder prüfen.",
+      "not_found": "Dieser Eintrag wurde nicht gefunden.",
+      "already_decided": "Dies wurde bereits entschieden.",
+      "cross_direction": "Diese Transaktion passt nicht zur Richtung des Dokuments.",
+      "amount_exceeds_open": "Der Betrag übersteigt den offenen Betrag.",
+      "amount_exceeds_transaction": "Diese Buchung ist bereits anderen Belegen zugeordnet. Der verbleibende Betrag reicht dafür nicht aus.",
+      "unauthenticated": "Bitte erneut anmelden.",
+      "no_workspace": "Kein Team gefunden.",
+      "forbidden": "Dafür fehlt die Berechtigung.",
+      "unknown": "Unerwarteter Fehler. Bitte erneut versuchen."
+    },
+    "zuordnung": {
+      "tabLabel": "Zuordnung",
+      "heading": "Zuordnung",
+      "description": "Nicht zugeordnete Transaktionen und ihre Vorschläge.",
+      "emptyState": "Keine offenen Transaktionen.",
+      "bulkNoDocumentNeeded": "Kein Beleg nötig",
+      "forCounterpartyAlways": "für diese Gegenpartei immer",
+      "columns": {
+        "bookingDate": "Datum",
+        "counterparty": "Zahlungspartner",
+        "amount": "Betrag",
+        "remittanceText": "Verwendungszweck",
+        "suggestions": "Vorschläge"
+      },
+      "noSuggestions": "Keine Vorschläge.",
+      "duplicateWarning": "Mehrere Zahlungen für dasselbe Dokument bestätigt.",
+      "platformPayoutHint": "Unzugeordnet: Auszahlungsbericht von {platform} fehlt. Bitte den Bericht hochladen."
+    },
+    "openItems": {
+      "tabLabel": "Offene Posten",
+      "heading": "Offene Posten",
+      "incomingHeading": "Eingehende Rechnungen (wir schulden)",
+      "outgoingHeading": "Ausgehende Rechnungen (uns geschuldet)",
+      "totalLabel": "Offen gesamt",
+      "emptyState": "Keine offenen Posten.",
+      "columns": {
+        "document": "Dokument",
+        "contact": "Kontakt",
+        "dueDate": "Fällig am",
+        "openAmount": "Offener Betrag",
+        "status": "Status"
+      }
+    },
+    "settlementReport": {
+      "heading": "Abrechnung",
+      "gross": "Umsatz",
+      "fees": "Gebühren",
+      "refunds": "Erstattungen",
+      "payout": "Auszahlung",
+      "discrepancy": "Abweichung zur tatsächlichen Auszahlung: {amount}",
+      "columns": {
+        "type": "Art",
+        "bookingDate": "Datum",
+        "customer": "Kunde",
+        "amount": "Betrag",
+        "match": "Zuordnung"
+      },
+      "lineTypes": {
+        "revenue": "Umsatz",
+        "fee": "Gebühr",
+        "refund": "Erstattung",
+        "payout": "Auszahlung",
+        "adjustment": "Korrektur"
+      },
+      "matchNotApplicable": "-",
+      "matchLinked": "Verknüpft",
+      "matchSuggested": "Vorschlag",
+      "invoiceMissing": "Rechnung fehlt"
+    },
+    "autoConfirm": {
+      "heading": "Automatisch zuordnen",
+      "description": "Welche Vorschläge sollen ohne Ihre Bestätigung gebucht werden? Automatisch gebucht wird nur, was eindeutig ist: ein einziger Vorschlag für die Buchung und für den Beleg.",
+      "modes": {
+        "all": {
+          "label": "Alles akzeptieren",
+          "hint": "Jeder eindeutige Vorschlag wird gebucht, auch Vorschläge der KI."
+        },
+        "system": {
+          "label": "Nur vom System erkanntes",
+          "hint": "Gebucht werden eindeutige Treffer der festen Regeln, zum Beispiel gleicher Betrag und gleicher Anbieter. KI-Vorschläge bestätigen Sie selbst."
+        },
+        "none": {
+          "label": "Nichts",
+          "hint": "Sie bestätigen jeden Vorschlag selbst."
+        }
+      }
+    },
+    "contactAliases": {
+      "heading": "Namen in Zahlungen",
+      "description": "Unter diesen Namen tauchte der Kontakt in bestätigten Zahlungen auf. Sie gelten beim Zuordnen künftig als Treffer für diesen Kontakt.",
+      "empty": "Noch keine abweichenden Namen gelernt.",
+      "remove": "Entfernen"
+    }
+  },
+  "Start": {
+    "heading": "Start",
+    "description": "Das erledigen, was jetzt ansteht.",
+    "allDone": "Alles erledigt. Es liegt gerade nichts an.",
+    "buckets": {
+      "pendingConfirmation": {
+        "heading": "Wartet auf Bestätigung",
+        "hint": "Diese Dokumente warten auf Ihre Bestätigung, bevor sie importiert werden."
+      },
+      "failedProcessing": {
+        "heading": "Verarbeitung fehlgeschlagen",
+        "hint": "Bei diesen Dokumenten ist die Verarbeitung fehlgeschlagen."
+      },
+      "overduePayments": {
+        "heading": "Überfällig",
+        "hint": "Diese Rechnungen sind überfällig."
+      },
+      "unmatchedTransactions": {
+        "heading": "Zahlungen ohne Beleg",
+        "hint": "Diese Kontobewegungen haben noch keinen zugeordneten Beleg."
+      },
+      "openSuggestions": {
+        "heading": "Offene Vorschläge",
+        "hint": "Für diese Zuordnungsvorschläge steht noch eine Entscheidung aus."
+      }
+    }
+  },
+  "Closing": {
+    "heading": "Abschluss",
+    "description": "Prüfen, ob ein Monat oder ein Jahr vollständig ist, und alles für die Steuerberatung exportieren.",
+    "periodLabel": "Zeitraum",
+    "periodMonths": "Monate",
+    "periodYears": "Jahre",
+    "periodSubmit": "Anzeigen",
+    "download": "Export herunterladen",
+    "downloadHint": "Eine ZIP-Datei mit uebersicht.xlsx (Dokumente, Buchungen und Zuordnungen des Zeitraums), allen Belegen und den eigenen Ausgangsrechnungen.",
+    "completeHeading": "Dieser Zeitraum ist vollständig.",
+    "completeHint": "Es fehlt nichts, was Digipost kennt. Belege, die nie hochgeladen wurden, kann auch dieser Abschluss nicht sehen.",
+    "emptyPeriod": "In diesem Zeitraum liegen weder Dokumente noch Buchungen. Ein leerer Zeitraum ist kein abgeschlossener Zeitraum.",
+    "totalsHeading": "Umfang des Zeitraums",
+    "totalDocuments": "{count, plural, one {# Dokument} other {# Dokumente}}",
+    "totalTransactions": "{count, plural, one {# Buchung} other {# Buchungen}}",
+    "openLink": "Ansehen",
+    "checks": {
+      "unmatchedTransactions": {
+        "heading": "Buchungen ohne Beleg",
+        "hint": "Zu diesen Kontobewegungen aus dem Zeitraum fehlt noch ein Beleg."
+      },
+      "documentsWithoutPayment": {
+        "heading": "Belege ohne Zahlung",
+        "hint": "Diese Rechnungen aus dem Zeitraum sind noch offen oder überfällig."
+      },
+      "pendingConfirmation": {
+        "heading": "Wartet auf Bestätigung",
+        "hint": "Diese Dokumente aus dem Zeitraum warten auf Ihre Bestätigung, bevor sie importiert werden."
+      },
+      "failedProcessing": {
+        "heading": "Verarbeitung fehlgeschlagen",
+        "hint": "Bei diesen Dokumenten aus dem Zeitraum ist die Verarbeitung fehlgeschlagen."
+      },
+      "openSuggestions": {
+        "heading": "Offene Zuordnungsvorschläge",
+        "hint": "Für diese Vorschläge zu Buchungen aus dem Zeitraum steht noch eine Entscheidung aus."
+      }
+    },
+    "export": {
+      "documentsSheet": "Dokumente",
+      "transactionsSheet": "Buchungen",
+      "assignmentsSheet": "Zuordnungen",
+      "documentColumns": {
+        "reference": "Nr.",
+        "date": "Datum",
+        "name": "Name",
+        "counterparty": "Gegenpartei",
+        "kind": "Art",
+        "direction": "Richtung",
+        "amount": "Betrag",
+        "currency": "Währung",
+        "invoiceNumber": "Rechnungsnummer",
+        "paymentStatus": "Zahlungsstatus",
+        "matchedTransactions": "Zugeordnete Buchungen",
+        "file": "Datei"
+      },
+      "transactionColumns": {
+        "reference": "Nr.",
+        "date": "Datum",
+        "account": "Konto",
+        "amount": "Betrag",
+        "currency": "Währung",
+        "counterparty": "Gegenpartei",
+        "purpose": "Verwendungszweck",
+        "matchedDocuments": "Zugeordnete Belege",
+        "status": "Status"
+      },
+      "assignmentColumns": {
+        "documentReference": "Beleg-Nr.",
+        "documentDate": "Belegdatum",
+        "document": "Beleg",
+        "documentAmount": "Belegbetrag",
+        "currency": "Währung",
+        "transactionReference": "Buchungs-Nr.",
+        "transactionDate": "Buchungsdatum",
+        "transactionAmount": "Buchungsbetrag",
+        "allocatedAmount": "Zugeordneter Betrag"
+      },
+      "transactionStatus": {
+        "matched": "zugeordnet",
+        "noDocumentNeeded": "kein Beleg nötig",
+        "open": "offen"
+      },
+      "outsidePeriod": "außerhalb des Zeitraums ({date}, {amount})",
+      "outsidePeriodWithoutAmount": "außerhalb des Zeitraums ({date})",
+      "notListed": "nicht in dieser Übersicht ({date}, {amount})",
+      "notListedWithoutAmount": "nicht in dieser Übersicht ({date})"
+    }
+  }
+}

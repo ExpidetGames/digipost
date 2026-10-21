@@ -1,0 +1,5 @@
+"Auftragskonto";"Buchungstag";"Valutadatum";"Buchungstext";"Verwendungszweck";"Glaeubiger ID";"Mandatsreferenz";"Kundenreferenz (End-to-End)";"Sammlerreferenz";"Lastschrift Ursprungsbetrag";"Auslagenersatz Ruecklastschrift";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"BIC (SWIFT-Code)";"Betrag";"Waehrung";"Info"
+"DE02120300000000202051";"02.08.2026";"02.08.2026";"GUTSCHRIFT";"Rechnung 1001";"";"";"E2E-INV-1001";"";"";"";"Mueller GmbH";"DE45500105172295759744";"COBADEFFXXX";"250,00";"EUR";""
+"DE02120300000000202051";"05.08.2026";"05.08.2026";"FOLGELASTSCHRIFT";"Miete August 2026";"DE98ZZZ09999999999";"MANDATE-2026-001";"E2E-MIETE-08";"";"";"";"Hausverwaltung Schaefer & Soehne GmbH";"DE11500105170648489890";"GENODEF1XXX";"-45,99";"EUR";""
+"DE02120300000000202051";"07.08.2026";"07.08.2026";"FOLGELASTSCHRIFT";"Rechnungsnummer 4711";"";"";"E2E-TEL-08";"";"";"";"Telekom Deutschland GmbH";"DE07500105174321987654";"";"-19,99";"EUR";""
+"DE02120300000000202051";"31.08.2026";"31.08.2026";"ENTGELTABSCHLUSS";"Kontofuehrungsgebuehr";"";"";"";"";"";"";"Digipost Bank AG";"DE02120300000000202051";"";"-10,50";"EUR";""

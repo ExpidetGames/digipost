@@ -1,0 +1,123 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+ * Digipost's own brand tokens (decisions/0056-paper-brand.md). The template shipped a
+ * neutral blue placeholder in every slot; these are the real values, and they keep the
+ * template's own contrast rule (src/shared/ui-primitives/README.md): `--primary`/`--accent`
+ * are background colors paired with their `-foreground` token, `--accent-strong` is the one
+ * for accent-colored text on the page background.
+ *
+ * The palette is paper: a warm off-white page, a second warmer tone for the bands that
+ * carry a section, a near-black ink, and a deep navy that does the work of both the button
+ * background and accent-colored text (11:1 against the page, 11.5:1 under white text).
+ * `--color-brand-warm` is the small decorative accent (the rust dot on "Meist gewählt"),
+ * deliberately NOT `--destructive`: it never signals an error.
+ *
+ * Light only, on purpose (decisions/0056): the product has no theme toggle and never had
+ * one, so "dark mode" only ever meant "this user's OS is dark" against a palette nobody
+ * designed for it. `@custom-variant dark` stays defined so the shadcn primitives' own
+ * `dark:` utilities keep compiling; nothing sets `.dark`, so none of them ever match.
+ * Re-introducing dark mode means designing it, not deriving it from these values.
+ */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* `--font-plex-sans`/`--font-newsreader` are next/font variables set on <html>
+   * (src/app/layout.tsx); the fallbacks keep every surface readable if a font fails to load. */
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-heading: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* `--color-accent-strong` is the one to use for small accent-colored text; see the
+   * contrast rule in src/shared/ui-primitives/README.md. */
+  --color-accent-strong: var(--accent-strong);
+
+  /* The warm decorative accent (rust). Small marks only: the dot before "Meist gewählt",
+   * a rule under a numeral. Never an error state, that is `--destructive`. */
+  --color-brand-warm: var(--brand-warm);
+  /* The second paper tone, for a band that carries a whole section. Same value as
+   * `--muted`, named for what it does on a page rather than for a component state. */
+  --color-paper: var(--paper);
+  /* Money in. A ledger's one green, tuned for this background; the only place a colour
+   * carries meaning on its own, so it is a token and not a Tailwind palette class. */
+  --color-brand-positive: var(--brand-positive);
+}
+
+:root {
+  color-scheme: light;
+
+  --background: #fafaf8; /* paper */
+  --foreground: #1c1e22; /* ink, 15.9:1 on --background */
+  --card: #ffffff;
+  --card-foreground: #1c1e22;
+  --popover: #ffffff;
+  --popover-foreground: #1c1e22;
+  /* Deep navy: 11.5:1 under white text as a button background, and dark enough to double
+   * as --accent-strong for text on the page background (11.0:1). */
+  --primary: #1f3a5f;
+  --primary-foreground: #ffffff;
+  --secondary: #f3efe5;
+  --secondary-foreground: #1c1e22;
+  --muted: #f3efe5; /* the warmer paper tone */
+  --muted-foreground: #5c5f66; /* 6.1:1 on --background, 5.6:1 on --muted */
+  --accent: #e8eef3; /* cool tint of --primary, the hover/active surface */
+  --accent-foreground: #1c1e22;
+  --accent-strong: #1f3a5f; /* 11.0:1 on --background, 9.9:1 on --accent */
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #dedacd;
+  --input: #dedacd;
+  --ring: #1f3a5f;
+  --paper: #f3efe5;
+  --brand-warm: #a8481e; /* 6.3:1 on --background, for small marks and rules */
+  --brand-positive: #1e6a4f; /* credit amounts, 6.2:1 on --background */
+  /* 3px: the reference's own radius. Paper and ruled lines, not rounded cards. */
+  --radius: 3px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Headings are the serif, everywhere: the marketing page and the app are one brand
+   * (decisions/0056-paper-brand.md). A page that wants a sans heading opts out with
+   * `font-sans` on that element. */
+  h1,
+  h2 {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+}

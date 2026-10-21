@@ -1,0 +1,9 @@
+ALTER TABLE "documents" ADD COLUMN "direction" text;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "invoice_number" text;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "total_amount_cents" integer;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "currency" text;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "due_date" date;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "payment_iban" text;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "payment_reference" text;--> statement-breakpoint
+ALTER TABLE "documents" ADD COLUMN "paid_note" text;--> statement-breakpoint
+CREATE INDEX "documents_workspace_invoice_number_idx" ON "documents" USING btree ("workspace_id","invoice_number");

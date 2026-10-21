@@ -1,0 +1,5 @@
+Start Date	End Date	Vendor Identifier	Quantity	Partner Share	Extended Partner Share	Partner Share Currency	Sales or Return	Apple Identifier	Title	Product Type Identifier	Country Of Sale	Customer Price	Customer Currency
+08/01/2026	08/31/2026	80012345	3	2.09	6.27	EUR	S	1234567890	Digipost Pro Monatsabo	1	DE	2.99	EUR
+08/01/2026	08/31/2026	80012345	5	6.99	34.95	EUR	S	1234567891	Digipost Starter Monatsabo	1	AT	9.99	EUR
+08/01/2026	08/31/2026	80012345	1	2.09	2.09	EUR	R	1234567890	Digipost Pro Monatsabo	1	DE	2.99	EUR
+08/01/2026	08/31/2026	80012345	2	13.99	27.98	EUR	S	1234567892	Digipost Unlimited Jahresabo	1	CH	19.99	EUR

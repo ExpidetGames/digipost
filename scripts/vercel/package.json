@@ -1,0 +1,10 @@
+{
+  "name": "digipost-vercel-cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Vercel CLI the deployment workflows use, pinned with its whole dependency tree. Install with `npm ci --ignore-scripts`; nothing is built from this directory.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "vercel": "64.5.0"
+  }
+}

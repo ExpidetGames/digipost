@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": false
+  },
+  "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/cron/process-jobs",
+      "schedule": "0 */2 * * *"
+    },
+    {
+      "path": "/api/cron/purge-rejected-intake",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- decisions/0064-camt053-wraps-its-parties.md: the shape a real camt.053.001.08 export uses
+     (a synthetic document in that shape). Every related party is wrapped in <Pty>,
+     which is where camt.053.001.04 and later put it, and the agent's BIC element is <BICFI>.
+     Both differ from camt053-valid.xml, which is a .001.02 document. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+  <BkToCstmrStmt>
+    <Stmt>
+      <Id>STMT-V8</Id>
+      <Acct><Id><IBAN>DE89370400440532013000</IBAN></Id><Ccy>EUR</Ccy></Acct>
+      <Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">0.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-01-01</Dt></Dt></Bal>
+      <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">129.60</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-01-31</Dt></Dt></Bal>
+      <Ntry>
+        <Amt Ccy="EUR">250.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <BookgDt><Dt>2026-01-29</Dt></BookgDt>
+        <NtryDtls><TxDtls>
+          <RltdPties>
+            <Dbtr><Pty><Nm>Beispiel Software Inc</Nm></Pty></Dbtr>
+            <Cdtr><Pty><Nm>Mustermann und Beispiel GbR</Nm></Pty></Cdtr>
+          </RltdPties>
+          <RltdAgts><DbtrAgt><FinInstnId><BICFI>DEUTDEFFXXX</BICFI></FinInstnId></DbtrAgt></RltdAgts>
+          <RmtInf><Ustrd>CCI : 0000000001,PURP:DEVELOPER PROCEEDS,BEISPIEL</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+      <Ntry>
+        <Amt Ccy="EUR">120.40</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <BookgDt><Dt>2026-01-29</Dt></BookgDt>
+        <NtryDtls><TxDtls>
+          <RltdPties>
+            <Dbtr><Pty><Nm>Mustermann und Beispiel GbR</Nm></Pty></Dbtr>
+            <Cdtr><Pty><Nm>HOSTING-BEISPIEL.COM</Nm></Pty></Cdtr>
+          </RltdPties>
+        </TxDtls></NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>

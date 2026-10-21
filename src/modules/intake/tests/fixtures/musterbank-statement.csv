@@ -1,0 +1,8 @@
+Buchungsdatum;Wertstellung;Betrag;Währung;Empfänger/Auftraggeber;IBAN;Verwendungszweck
+02.08.2026;02.08.2026;250,00;EUR;Müller GmbH;DE45500105172295759744;Rechnung 1001
+05.08.2026;05.08.2026;-45,99;EUR;Hausverwaltung Schäfer & Söhne GmbH;DE11500105170648489890;Miete August 2026
+07.08.2026;07.08.2026;-19,99;EUR;Telekom Deutschland GmbH;DE07500105174321987654;Rechnungsnummer 4711
+10.08.2026;10.08.2026;500,00;EUR;Bäcker Weiß oHG;DE33500105179988776655;Rechnung Nr. 1002
+15.08.2026;15.08.2026;1.083,68;EUR;Grossauftrag Handels GmbH;DE60500105171111111111;Sammelzahlung August
+20.08.2026;20.08.2026;-129,00;EUR;Buerobedarf Krueger KG;DE29500105172222222222;Rechnung 998
+31.08.2026;31.08.2026;-10,50;EUR;Digipost Bank AG;DE02120300000000202051;Kontofuehrungsgebuehr

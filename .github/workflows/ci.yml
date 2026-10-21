@@ -1,0 +1,275 @@
+name: ci
+
+# Pull requests into development and main, pushes to development and main, and manual runs.
+# GitHub-hosted runners only (ubuntu-24.04): this repository is public, so a pull request from a fork must
+# never run on a machine of ours (decisions/0073-public-repo-and-production-pipeline.md). No repository secret is
+# used anywhere in this file; every database, mail and object-storage value is a throwaway test value.
+#
+# The single required status check is `ci-passed` (README.md, "CI"): a path-skipped job never blocks a merge
+# because it accepts skipped jobs, and a failed or cancelled one does.
+#
+#   changes -> check ---------+
+#           -> db ------------+--> ci-passed
+#           -> e2e -----------+
+#           -> actionlint ----+
+#
+# Which part of a pull request runs is decided by `changes` (docs-only changes skip almost everything). Pushes,
+# manual runs and every pull request into `main` (a release) run everything: the path filter is ignored there.
+on:
+  pull_request:
+    branches: [development, main]
+  push:
+    branches: [development, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the superseded run. A push to a long-lived branch is never cancelled or
+# replaced: its group contains the commit, so every pushed commit gets its own run (with a shared group GitHub would
+# drop all but the newest waiting run) and "which commit broke it" is never lost.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: "true"
+
+jobs:
+  # Reads the changed files of a pull request through the API (no checkout needed). The filter step only runs for
+  # pull requests; for every other trigger the outputs are empty and the job conditions below ignore them.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - name: Filter changed paths
+        id: filter
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!LICENSE'
+            # The structure checker (pnpm verify:structure) validates the governed Markdown files: their
+            # metadata headers and their relative links. A documentation change therefore still runs it.
+            docs:
+              - '**/*.md'
+            workflows:
+              - '.github/**'
+              - 'scripts/vercel/**'
+
+  # Static checks, unit tests, a production build and the migration drift check. No database, no secret.
+  # A documentation-only pull request runs only the structure check.
+  check:
+    name: "Static checks, unit tests and build"
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'main' || needs.changes.outputs.code == 'true' || needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # src/platform/env's public entrypoint inlines this at build time (src/app/layout.tsx, src/app/robots.ts,
+      # src/app/sitemap.ts); no page needs it to be a real, reachable host in CI. serverEnv() is validated lazily
+      # on first access and nothing on the build path touches it, so no DB/auth/mail secret is needed either,
+      # only these two dummy public values.
+      NEXT_PUBLIC_APP_URL: https://app.example.com
+      APP_URL: https://app.example.com
+      NEXT_TELEMETRY_DISABLED: "1"
+      # False only for a documentation-only pull request: the steps that need code to have changed skip then.
+      RUN_CODE_CHECKS: ${{ github.event_name != 'pull_request' || github.base_ref == 'main' || needs.changes.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # pnpm before Node: setup-node's `cache: pnpm` needs pnpm on the PATH to find the store.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0 (version from package.json "packageManager")
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc # decisions/0008-node-version-policy.md
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        if: ${{ env.RUN_CODE_CHECKS == 'true' }}
+        run: pnpm typecheck
+      - name: Lint
+        if: ${{ env.RUN_CODE_CHECKS == 'true' }}
+        run: pnpm lint
+      - name: Structure check
+        run: pnpm verify:structure
+      - name: Unit tests
+        if: ${{ env.RUN_CODE_CHECKS == 'true' }}
+        run: pnpm test
+      - name: Build
+        if: ${{ env.RUN_CODE_CHECKS == 'true' }}
+        run: pnpm build
+      # WEBAPP_TEMPLATE_SPEC.md §11.3 rule 2: a schema edit that was never turned into a migration must fail CI.
+      # `drizzle-kit generate` diffs src/persistence/schema/ against the last migration snapshot and needs no DB
+      # connection (drizzle.config.ts); if it writes a new file here, the schema and the committed migrations have
+      # drifted.
+      - name: Migration drift check
+        if: ${{ env.RUN_CODE_CHECKS == 'true' }}
+        run: |
+          pnpm db:generate
+          git diff --exit-code src/persistence/migrations
+
+  # The database and integration suites (`pnpm test:db`, `pnpm test:int`) against the same stack
+  # docker/compose.test.yml builds for `pnpm test:docker`, assembled from service containers and the
+  # .github/actions/test-stack composite action instead of Docker Compose (decisions/0073). The credentials are
+  # throwaway test values.
+  db:
+    name: "Database and integration tests"
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'main' || needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+          # Hosted providers default to C collation; matching it keeps ordering-sensitive assertions identical to
+          # production (docker/compose.test.yml, decisions/0006).
+          POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.27.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0 (version from package.json "packageManager")
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prepare the test stack
+        uses: ./.github/actions/test-stack
+      - name: Database tests
+        run: pnpm test:db
+      - name: Integration tests
+        run: pnpm test:int
+
+  # Playwright against a production build (`pnpm build && pnpm start`, started by playwright.config.ts) on the same
+  # stack as `db`. Pull requests into `development` run the hand-picked @smoke set (WEBAPP_TEMPLATE_SPEC.md §10.5);
+  # everything else (release pull requests into `main`, pushes, manual runs) runs the full suite. The suite is
+  # unsharded: it is about a dozen spec files, which a single job runs in a few minutes.
+  e2e:
+    name: "End-to-end tests"
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'main' || needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+          POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.27.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+        options: >-
+          --health-cmd "/mailpit readyz"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0 (version from package.json "packageManager")
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install the browser and its system libraries
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Prepare the test stack
+        uses: ./.github/actions/test-stack
+      - name: Run the smoke set
+        if: ${{ github.event_name == 'pull_request' && github.base_ref != 'main' }}
+        run: pnpm test:e2e --grep @smoke
+      - name: Run the full suite
+        if: ${{ github.event_name != 'pull_request' || github.base_ref == 'main' }}
+        run: pnpm test:e2e
+      - name: Upload the Playwright report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  actionlint:
+    name: Lint workflow files
+    needs: changes
+    if: ${{ github.event_name != 'pull_request' || github.base_ref == 'main' || needs.changes.outputs.workflows == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # Uses .github/actionlint.yaml. The image bundles shellcheck for the run steps.
+      - name: Run actionlint
+        run: docker run --rm --volume "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color
+
+  # The only check that branch protection requires. It runs even when jobs fail or are skipped, fails on any failed
+  # or cancelled job and accepts skipped ones (path filter).
+  ci-passed:
+    name: All checks passed?
+    needs: [changes, check, db, e2e, actionlint]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Show the result of every job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: echo "$NEEDS"
+      - name: Fail if a job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1
