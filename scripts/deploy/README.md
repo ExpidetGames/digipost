@@ -113,7 +113,7 @@ Three groups. The runtime ones are validated lazily by `serverEnv()` (`src/platf
 | `APP_URL` | yes | `https://<your domain>` | No trailing slash. Absolute links, auth callbacks, e-mails. |
 | `NEXT_PUBLIC_APP_URL` | yes, also at build time | Same value as `APP_URL` | Inlined into the client bundle by `next build`. Must not be a Sensitive variable (section 5). |
 | `DATABASE_URL` | yes | Neon **pooled** host, role `app_runtime` | `sslmode=require`. |
-| `DATABASE_URL_PUBLIC` | no, leave unset | | For role `app_public`, which no code path uses yet (`getPublicDb()` has no caller). Set it only once an unauthenticated public path reads the database. |
+| `DATABASE_URL_PUBLIC` | no, leave unset | | For role `app_public`, which no code path uses yet (`getPublicDb()` has no caller). Set it only once an unauthenticated public path reads the database. The role itself must still exist (section 6). |
 | `BETTER_AUTH_SECRET` | yes | `openssl rand -base64 32` | At least 32 characters. Changing it signs everybody out. |
 | `AUTH_BOOTSTRAP_EMAILS` | first deploy only | Your own address | Sign-up is by invitation only (decisions/0074). This list may sign up without one, for the first admin. Empty it once that admin exists. |
 | `SMTP_URL` | yes | `smtps://<user>:<password>@<host>:465` | Provider-neutral (nodemailer). |
@@ -278,7 +278,10 @@ Plan: **Pro** (a Hobby plan allows only daily crons and fewer deployment feature
      whichever role runs it). Its direct URL is `DATABASE_URL_MIGRATE`.
    - `app_runtime` (DML only): created once, before the first migration, by `pnpm db:bootstrap` from your own
      machine. Invent a password, build the two URLs, and pass them as shell variables, not a file. `app_public`
-     is not needed (no code path uses it); `db:bootstrap` skips it while `DATABASE_URL_PUBLIC` is unset:
+     must exist too, because `grants.sql` aborts the first migration without it, but no code path logs in as it.
+     `db:bootstrap` skips it while `DATABASE_URL_PUBLIC` is unset, so create it as the owner with
+     `create role app_public nologin;` (the same works for `app_runtime` while `DATABASE_URL` still uses the
+     owner role):
 
      ```sh
      read -rs -p 'owner direct URL: ' DATABASE_URL_MIGRATE; export DATABASE_URL_MIGRATE; echo
