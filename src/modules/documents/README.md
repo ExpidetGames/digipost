@@ -42,7 +42,12 @@ Maintenance triggers:
   its own contents (decisions/0061-a-statement-is-dated-by-its-last-booking.md)
 - The shared effective-date expression (`documentEffectiveDate`) changes - it also scopes
   `src/modules/closing`'s periods (decisions/0066-abschluss-check-and-export.md)
-Last verified: 2026-10-22, decisions/0075-email-intake.md: `index.ts` also exports
+Last verified: 2026-10-22, decisions/0076-match-after-every-trigger.md: a document finishing
+invoice-shaped queues `match-payments` due now (`JobsRepository.scheduleNow`, one queued run per
+workspace) instead of 90 seconds later, so the runner that processed it also matches it; every
+`after()` runner call in `actions.ts` passes `AFTER_RESPONSE_JOB_BUDGET_MS`, and
+`src/app/api/documents/route.ts` declares `maxDuration = 300` for its `after()` job run.
+Previously 2026-10-22, decisions/0075-email-intake.md: `index.ts` also exports
 `processIntakeUpload`/`MAX_UPLOAD_PAGES` (pure) so the E-Mail-Eingang's use case sniffs each
 attachment exactly like an upload; a document created from a mail has no uploader and
 `ui/document-detail-client.tsx` shows "Per E-Mail von <sender>" (optional `emailSender` prop).

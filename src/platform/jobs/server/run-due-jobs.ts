@@ -14,6 +14,9 @@ export type RunDueJobsInput = {
   /** Restrict claiming to jobs belonging to one workspace (the UI "kick" trigger) - omit
    * for the cron sweeper, which processes every workspace's due jobs. */
   workspaceId?: string;
+  /** Stop starting new jobs after this many milliseconds (decisions/0076). Every `after()`
+   * trigger passes `AFTER_RESPONSE_JOB_BUDGET_MS`; the cron sweeper passes none. */
+  budgetMs?: number;
 };
 
 export type RunDueJobsResult = { processed: number };

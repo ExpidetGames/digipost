@@ -8,6 +8,7 @@ import { requirePermission } from "@/platform/access/server";
 import { getRequestServices } from "@/persistence/composition/request-services";
 import { DOCUMENT_ERROR, MappingValidationError } from "@/persistence/use-cases/documents-use-cases";
 import { UseCaseError } from "@/persistence/use-cases/errors";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
 import { runDueJobs } from "@/platform/jobs/server";
 import type { ActionResult } from "@/shared/action-result";
 
@@ -82,7 +83,7 @@ export async function retryProcessingAction(input: unknown): Promise<ActionResul
       documentId: parsed.data.documentId,
     });
     const workspaceId = access.access.workspace.id;
-    after(() => runDueJobs({ workspaceId, limit: 5 }));
+    after(() => runDueJobs({ workspaceId, limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS }));
     revalidatePath("/dashboard");
     revalidatePath(`/dashboard/documents/${parsed.data.documentId}`);
     return { status: "success", data: undefined };
@@ -120,7 +121,7 @@ export async function reclassifyDocumentAction(input: unknown): Promise<ActionRe
     console.error("[documents] failed to discard open payment suggestions after a reclassification", { workspaceId, documentId, err });
   }
 
-  after(() => runDueJobs({ workspaceId, limit: 5 }));
+  after(() => runDueJobs({ workspaceId, limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS }));
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/documents/${documentId}`);
   return { status: "success", data: undefined };
@@ -143,7 +144,7 @@ export async function kickProcessingAction(input: unknown = {}): Promise<void> {
 
   const workspaceId = access.access.workspace.id;
   const limit = parsed.success ? parsed.data.limit : 5;
-  after(() => runDueJobs({ workspaceId, limit }));
+  after(() => runDueJobs({ workspaceId, limit, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS }));
 }
 
 /** "Bestätigen und importieren" (F1b, decisions/0020-universal-intake.md's confirmation step,

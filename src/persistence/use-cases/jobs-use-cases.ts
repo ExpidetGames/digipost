@@ -65,12 +65,24 @@ function logJobFailure(level: "warn" | "error", message: string, fields: JobFail
   log(`[jobs] ${message}`, fields);
 }
 
+export type RunDueInput = {
+  limit?: number;
+  workspaceId?: string;
+  /** Wall-clock budget in milliseconds (decisions/0076). Once it is used up, no further job is
+   * started: the loop stops claiming, and jobs already claimed in the current round but not
+   * yet started are released (`JobsRepository.release`), so they never sit behind a lease of a
+   * runner the platform is about to stop. A job that already started always runs to its end;
+   * the caller's own time limit must leave room for that. Omitted: no budget, only the round
+   * limit. */
+  budgetMs?: number;
+};
+
 export interface JobsUseCases {
   /** Claims and runs up to `limit` due jobs (optionally scoped to one workspace). Never
    * throws for an individual job's failure - each job's own outcome (succeeded, rescheduled
    * with backoff, or permanently failed) is recorded on that job's row; only an error from
    * the claim step itself propagates. */
-  runDue(input: { limit?: number; workspaceId?: string }): Promise<{ processed: number }>;
+  runDue(input: RunDueInput): Promise<{ processed: number }>;
 }
 
 export function createJobsUseCases(deps: {
@@ -150,20 +162,24 @@ export function createJobsUseCases(deps: {
   }
 
   return {
-    async runDue({ limit = 5, workspaceId } = {}) {
+    async runDue({ limit = 5, workspaceId, budgetMs } = {}) {
       // Looped, not a single claim-and-run pass: a handler can enqueue a follow-up job in
       // the very same call (a confirmed bank statement's `process-document` run enqueues
-      // `import-account-transactions`), which is not yet due at the moment of the FIRST claim
-      // - only a second `claimDue` call picks it up. Without this loop, a caller (the UI
-      // "kick", the cron sweeper) would need to be invoked twice to actually finish a single
-      // processing run's cascade. `MAX_ITERATIONS` bounds this to a handful of claim rounds -
-      // enough to drain a realistic cascade (today: process-document ->
-      // import-account-transactions -> match-payments, at most a few levels deep) without ever
-      // looping indefinitely.
+      // `import-account-transactions`, a finished invoice or an imported statement enqueues
+      // `match-payments` due immediately, decisions/0076), which is not yet claimable at the
+      // moment of the FIRST claim - only a later `claimDue` call picks it up. Without this loop, a
+      // caller (the upload route's `after()`, the UI "kick", the cron sweeper) would need to be
+      // invoked twice to actually finish a single processing run's cascade. `MAX_ITERATIONS`
+      // bounds this to a handful of claim rounds - enough to drain a realistic cascade (today:
+      // process-document -> import-account-transactions -> match-payments, at most a few levels
+      // deep) without ever looping indefinitely; `budgetMs` bounds it in wall-clock time.
       const MAX_ITERATIONS = 10;
+      const startedAt = now().getTime();
+      const budgetUsedUp = () => budgetMs !== undefined && now().getTime() - startedAt >= budgetMs;
       let processed = 0;
 
       for (let i = 0; i < MAX_ITERATIONS; i++) {
+        if (budgetUsedUp()) break;
         // Claiming happens in its own short transaction (the `for update skip locked` lock
         // is only held for the claim itself); running each handler happens OUTSIDE any
         // transaction, since a handler may make a slow external HTTP call (Mistral OCR/chat)
@@ -171,10 +187,17 @@ export function createJobsUseCases(deps: {
         const claimed = await deps.uow.transaction((repos) => repos.jobs.claimDue({ limit, workspaceId, now: now(), leaseMs }));
         if (claimed.length === 0) break;
 
-        for (const job of claimed) {
+        for (const [index, job] of claimed.entries()) {
+          if (budgetUsedUp()) {
+            await deps.repos.jobs.release(
+              claimed.slice(index).map((j) => j.id),
+              now(),
+            );
+            return { processed };
+          }
           await runOne(job);
+          processed++;
         }
-        processed += claimed.length;
       }
 
       return { processed };

@@ -31,6 +31,7 @@ import { workspaceAccess, WorkspaceAccessError } from "@/platform/access/server"
 import { fileHash } from "@/modules/intake";
 import { getRequestServices } from "@/persistence/composition/request-services";
 import { DOCUMENT_ERROR, DuplicateDocumentError } from "@/persistence/use-cases/documents-use-cases";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
 import { runDueJobs } from "@/platform/jobs/server";
 import {
   MAX_UPLOAD_PAGES,
@@ -39,10 +40,13 @@ import {
   type DocumentUploadErrorCode,
 } from "@/modules/documents/server";
 
-// PDF assembly (pdf-lib) and the upload's own DB/storage work are fast, but generous
-// headroom for a slow client connection or a cold Lambda costs nothing on Vercel's Fluid
-// Compute pricing model.
-export const maxDuration = 30;
+// PDF assembly (pdf-lib) and the upload's own DB/storage work are fast. The limit is for the
+// `after()` job run in this same invocation (decisions/0076): it processes the document
+// (Mistral OCR and analysis) and then runs payment matching, which can make one AI call per
+// open transaction. The runner stops starting jobs after `AFTER_RESPONSE_JOB_BUDGET_MS`
+// (2 minutes), so a job started just before that still has 3 minutes to finish. Waiting on
+// Mistral costs little on Vercel's Fluid Compute pricing model (active CPU time).
+export const maxDuration = 300;
 
 class UploadRequestError extends Error {
   override readonly name = "UploadRequestError";
@@ -255,7 +259,7 @@ export const POST = createApiHandlerFromContract(contract, {
     // never fail the 201 response.
     run: ({ result, access }) => {
       try {
-        after(() => runDueJobs({ workspaceId: access.workspace.id, limit: 5 }));
+        after(() => runDueJobs({ workspaceId: access.workspace.id, limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS }));
       } catch (err) {
         console.error("[api/documents] after() scheduling failed", err instanceof Error ? err.message : err);
       }
