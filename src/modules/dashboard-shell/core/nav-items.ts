@@ -43,7 +43,8 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       // P2c's camera scanner (`src/modules/scanner`) plugs into "Post erfassen"'s own page
       // (`src/app/(app)/dashboard/scan/page.tsx`'s "Kamera" tab), not a nav entry of its own.
       { href: "/dashboard/scan", labelKey: "scan" },
-      { href: null, labelKey: "emailIntake" },
+      // decisions/0075-email-intake.md: every member sees the address; only the admin changes it.
+      { href: "/dashboard/email-intake", labelKey: "emailIntake" },
     ],
   },
   // "Finanzen" (`src/modules/accounts`/`src/modules/payments`, F2,

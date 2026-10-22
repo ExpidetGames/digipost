@@ -34,12 +34,14 @@ import { createClosingUseCases } from "@/persistence/use-cases/closing-use-cases
 import { createContactUseCases } from "@/persistence/use-cases/contacts-use-cases";
 import { createDocumentUseCases } from "@/persistence/use-cases/documents-use-cases";
 import { createJobsUseCases } from "@/persistence/use-cases/jobs-use-cases";
+import { createMailIntakeUseCases } from "@/persistence/use-cases/mail-intake-use-cases";
 import { createPaymentsUseCases } from "@/persistence/use-cases/payments-use-cases";
 import { createSystemUseCases } from "@/persistence/use-cases/system-use-cases";
 import { createWorkspaceUseCases } from "@/persistence/use-cases/workspaces-use-cases";
 import { getPaymentProvider } from "@/modules/billing/server";
 import { createSmtpMailer } from "@/platform/mailer/server";
 import { getDocumentAnalyzer, getIntakeClassifier, getOcrEngine, getPaymentArbiter } from "@/platform/mistral/server";
+import { getInboundEmailDomain, getInboundMailProvider } from "@/platform/inbound-mail/server";
 import { getObjectStorage } from "@/platform/object-storage/server";
 
 export function createRequestServices() {
@@ -81,11 +83,23 @@ export function createRequestServices() {
   // `createFakePaymentArbiter()` by env, exactly like `getIntakeClassifier()` above.
   const payments = createPaymentsUseCases({ repos, uow, paymentArbiter: getPaymentArbiter(), accounts });
 
+  // decisions/0075-email-intake.md: the E-Mail-Eingang gets the already-built `documents`
+  // (every attachment goes through `createFromUpload`, never a second upload path) and the
+  // env-picked `InboundMailProvider` (Resend, or the deterministic fake), the same
+  // lazy-singleton shape as `getObjectStorage()`.
+  const mailIntake = createMailIntakeUseCases({
+    repos,
+    uow,
+    documents,
+    inboundMail: getInboundMailProvider(),
+    inboundDomain: getInboundEmailDomain(),
+  });
+
   // "Handlers registered where they belong" (decisions/0016-processing-pipeline-and-ai.md):
   // `src/platform/jobs`'s generic runner never sees `documents`/`billing`/`workspaces`/
   // `accounts`/`payments`/`mailer` directly, only this kind -> handler map, built once here
   // from the use cases this same function already constructed.
-  const jobHandlers = createJobHandlers({ documents, billing, workspaces, accounts, payments, mailer, objectStorage });
+  const jobHandlers = createJobHandlers({ documents, billing, workspaces, accounts, payments, mailIntake, mailer, objectStorage });
 
   // decisions/0066-abschluss-check-and-export.md: the Abschluss owns no table and needs no
   // port - only period-scoped reads over repositories other owners already own, so it gets
@@ -101,6 +115,7 @@ export function createRequestServices() {
     accounts,
     payments,
     closing,
+    mailIntake,
     jobs: createJobsUseCases({ repos, uow, handlers: jobHandlers }),
   };
 }

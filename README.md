@@ -13,7 +13,9 @@ Maintenance triggers:
 - A new top-level owner root (`src/modules/`, `src/persistence/`, ...) is populated for the first
   time
 - `.github/workflows/ci.yml` changes what runs or when
-Last verified: 2026-10-21, decisions/0073-public-repo-and-production-pipeline.md: rewrote "CI" (GitHub-hosted
+Last verified: 2026-10-22, decisions/0075-email-intake.md: added the "E-Mail-Eingang" feature
+bullet, its four environment variables, and item 5 of "Before going to production" (Resend as
+a sub-processor). 2026-10-21, decisions/0073-public-repo-and-production-pipeline.md: rewrote "CI" (GitHub-hosted
 runners, the Docker-backed suites back on), added "Deployment" and "License", rewrote the deploy-related
 items of "Before going to production". 2026-09-20, F5 (hardening, decisions/0027-hardening-and-deletion.md): added
 the "Workspace deletion and retention" feature bullet, the F5 summary at the end of "Current
@@ -159,6 +161,17 @@ What exists today, as vertical slices:
   platform fee invoice settles automatically once its period's fee lines are known; the
   platform's payout pairs with the matching bank deposit, even when the bank statement is
   imported later. See "Stripe und andere Plattformen" below for the operator-facing how-to.
+- **E-Mail-Eingang** (`src/modules/mail-intake`, `src/platform/inbound-mail`,
+  decisions/0075-email-intake.md): every workspace has a secret address
+  `post-<token>@<id>.resend.app` (`/dashboard/email-intake`, every member sees it); a mail
+  sent there arrives through Resend's `email.received` webhook (`POST /api/webhooks/resend`,
+  Svix-signed) and each supported attachment (up to 10, 15 MB each) becomes its own document
+  through the same path as an upload. The admin chooses who may send ("Nur bestimmte
+  Absender", the default: team members plus an allowlist of addresses and domains, DMARC or
+  SPF+DKIM required; or "Jeder, der die Adresse kennt"), can switch the address off or replace
+  it, sees a log of received mails (kept until the workspace is deleted), and gets at most one
+  notice per day and reason when mails are rejected. Mail to any other address of the Resend
+  account is answered and dropped without storing anything.
 - **Marketing landing page** (`src/app/(marketing)/`): hero, problem, how it works,
   features, a comparison to a scan-service bureau, pricing (read from
   `src/modules/billing`'s tier constants, never duplicated), trust/privacy facts, FAQ, and
@@ -192,10 +205,10 @@ repository, including the Digipost-specific domain rules the template did not ha
 src/            application code
   app/          Next.js routes and seams only (pages, layouts, route handlers)
   modules/      vertical capabilities (sign-in, workspaces, documents, scanner, billing,
-                intake, contacts, accounts, payments, dashboard-shell)
+                intake, contacts, accounts, payments, closing, mail-intake, dashboard-shell)
   shared/       neutral building blocks with 2+ consumers (ui-primitives, ...)
   platform/     app-wide infrastructure (auth, env, mailer, api-pipeline, observability,
-                access, object-storage, jobs, mistral)
+                access, object-storage, jobs, mistral, inbound-mail)
   persistence/  schema, migrations, repositories, use cases, composition root
   i18n/         locale config and messages
   proxy.ts, instrumentation*.ts, sentry.*.config.ts   Next.js/Sentry convention files
@@ -366,6 +379,12 @@ for why there are three DB roles.
    workspace and everything in it, including its object-storage prefix
    (decisions/0027-hardening-and-deletion.md) - use a disposable local workspace to try it,
    not one you want to keep testing against.
+9. **Try the E-Mail-Eingang locally (optional).** Set `INBOUND_EMAIL_DOMAIN` (any domain, e.g.
+   `inbox.digipost.local`) and `RESEND_WEBHOOK_SECRET` (any `whsec_<base64>` value) in
+   `.env.local` and leave `RESEND_API_KEY` empty: the fake provider is bound, and
+   `/dashboard/email-intake` shows an address. Post a webhook signed with that secret to
+   `POST /api/webhooks/resend` (`tests/e2e/helpers/mail-intake.ts`'s `signedWebhook` shows the
+   shape); the fake turns every mail into one generated PDF (decisions/0075-email-intake.md).
 
 ## Commands
 
@@ -477,6 +496,9 @@ See `.env.example` for the authoritative, commented list; summarized here:
 | `MISTRAL_API_KEY` | optional (real AI needs it; unset outside production binds deterministic fakes) | `src/platform/mistral` (via `src/platform/env`) |
 | `AI_PROVIDER` | optional (`mistral` \| `fake`) | `src/platform/mistral` (via `src/platform/env`) |
 | `MISTRAL_OCR_MODEL`, `MISTRAL_CHAT_MODEL` | optional | `src/platform/mistral` (via `src/platform/env`) |
+| `INBOUND_EMAIL_DOMAIN`, `RESEND_WEBHOOK_SECRET` | optional (both needed for the E-Mail-Eingang; without them no address is shown and the webhook answers 503) | `src/platform/inbound-mail` (via `src/platform/env`) |
+| `RESEND_API_KEY` | optional (real attachment retrieval needs it; unset outside production binds the deterministic fake) | `src/platform/inbound-mail` (via `src/platform/env`) |
+| `INBOUND_MAIL_PROVIDER` | optional (`resend` \| `fake`, never `fake` in production) | `src/platform/inbound-mail` (via `src/platform/env`) |
 | `BILLING_TEST_MODE` | optional (default false; only `true` in local dev and the hermetic test stack, never production - no Stripe keys exist) | `src/modules/billing` (via `src/platform/env`) |
 | `SENTRY_DSN` | optional | `src/platform/observability`, `next.config.ts` |
 | `SENTRY_AUTH_TOKEN` | optional | build only (source map upload), `next.config.ts` |
@@ -611,46 +633,53 @@ noted, before that changes.
    real (non-fake-provider) production traffic exists -
    `decisions/0016-processing-pipeline-and-ai.md`'s "Data protection note" and
    "Consequences" record this explicitly as an unfinished follow-up, not an oversight.
-5. **Stripe is still missing.** `src/modules/billing`'s `PaymentProvider` port has only a
+5. **Resend as receiver of the E-Mail-Eingang needs the same paperwork.** Incoming mail
+   (sender, subject, body, attachments) passes through and is stored by Resend, a
+   sub-processor with no DPA yet and unclear data residency for received mail; real customer
+   mail through `INBOUND_EMAIL_DOMAIN` is blocked on it exactly like Mistral above
+   (decisions/0075-email-intake.md). The Resend Free tier (100 mails per day, shared by magic
+   links and the E-Mail-Eingang's admin notices) is fine for internal use only. Setup:
+   `scripts/deploy/README.md`, section 7.
+6. **Stripe is still missing.** `src/modules/billing`'s `PaymentProvider` port has only a
    test-mode adapter; tier changes and package purchases work today solely because
    `BILLING_TEST_MODE=true` in local/test environments. `BILLING_TEST_MODE` must stay
    `false` in production until a real Stripe adapter implementing that port exists -
    `decisions/0017-billing-tiers-and-packages.md`'s "What a future Stripe adapter needs to
    implement".
-6. **Legal pages need a lawyer.** `/legal-notice` and `/privacy` render real German
+7. **Legal pages need a lawyer.** `/legal-notice` and `/privacy` render real German
    headings and structure but every fact (company name, address, register entry, VAT ID,
    supervisory authority, the privacy policy's own body) is an explicit TODO placeholder,
    visually marked as a draft (`LegalDraftBanner`) - see `src/i18n/messages/de.json`'s
    `Legal.draftBanner` copy. Replace every placeholder with real, lawyer-reviewed text
    before launch, and remove the draft banner once that review is done.
-7. **Sentry.** `@sentry/nextjs` is installed but unconfigured (fully inert without
+8. **Sentry.** `@sentry/nextjs` is installed but unconfigured (fully inert without
    `SENTRY_DSN`). On the first real deploy, run the Sentry setup wizard
    (`npx @sentry/wizard@latest -i nextjs`) or set `SENTRY_DSN` (and, for source map
    upload, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`) by hand in the hosting
    provider's environment variables; see `src/platform/observability/README.md`'s "When you
    first deploy a project built from this template".
-8. **Cron on Vercel Pro.** `vercel.json` has two cron entries: `GET /api/cron/process-jobs` every two hours
+9. **Cron on Vercel Pro.** `vercel.json` has two cron entries: `GET /api/cron/process-jobs` every two hours
    (`"0 */2 * * *"`) and `GET /api/cron/purge-rejected-intake` daily (`"0 3 * * *"`,
    decisions/0027-hardening-and-deletion.md's retention cron). Vercel sends `Authorization: Bearer $CRON_SECRET`
    when the project has a `CRON_SECRET` variable, which `requireCronSecret` checks. Document processing starts
    right after an upload (`after()`) and while a user watches (the workspace-scoped UI "kick"); the sweep is only
    a safety net for a job both missed (`decisions/0016-processing-pipeline-and-ai.md`). Cron jobs need the Pro
    plan for anything more frequent than daily.
-9. **The deploy pipeline.** `.github/workflows/deploy-production.yml` deploys on every push to `main`
+10. **The deploy pipeline.** `.github/workflows/deploy-production.yml` deploys on every push to `main`
    (`vercel.json` ships `"git": { "deploymentEnabled": false }`, so Vercel's own Git integration never
    deploys). It needs the GitHub environment `production` (restricted to `main`) with its four Infisical secrets,
    the Infisical project with the machine identity, the Vercel project with Deployment Protection and a bypass
    secret, and the Neon and R2 resources above. `scripts/deploy/README.md` lists every step, in order, with the
    first deployment, rollback and secret rotation.
-10. **`ci-passed` as a required check.** The repository is public, so branch protection is available:
+11. **`ci-passed` as a required check.** The repository is public, so branch protection is available:
     require the status check `ci-passed` on `main` and `development`, and set the Actions option "Require
     approval for all outside collaborators" (`scripts/deploy/README.md`, section 3). Deployment does not wait
     for CI, so it relies on this.
-11. **Backups are a documented requirement, not yet automated.** Set Neon's point-in-time-restore retention to
+12. **Backups are a documented requirement, not yet automated.** Set Neon's point-in-time-restore retention to
     the longest window the plan offers, add a scheduled logical dump to storage under a different account, and
     test a restore; decide the same for the R2 bucket (`scripts/deploy/README.md`, section 6). A business keeps
     its incoming mail here, so this blocks real customers.
-12. **Verify everything, once, before calling any of the above done.**
+13. **Verify everything, once, before calling any of the above done.**
     `pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:docker &&
     pnpm test:e2e:docker` - "CI" above lists what each command corresponds to. CI runs the same suites on every
     pull request.

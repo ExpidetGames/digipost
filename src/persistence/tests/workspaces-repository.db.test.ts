@@ -23,6 +23,7 @@ import { contactChangeProposals, contacts, documentContacts } from "@/persistenc
 import { documents } from "@/persistence/schema/documents";
 import { intakeSourceFingerprints } from "@/persistence/schema/intake-fingerprints";
 import { jobs } from "@/persistence/schema/jobs";
+import { inboundEmails, mailIntakeAllowedSenders, mailIntakeSettings } from "@/persistence/schema/mail-intake";
 import { documentTransactions, paymentAliases, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
 import { workspaceInvitations, workspaceMembers } from "@/persistence/schema/workspaces";
 
@@ -535,6 +536,11 @@ describe("createDrizzleWorkspaceRepository.delete (F5, decisions/0027-hardening-
       columnMapping: {},
     });
 
+    // decisions/0075-email-intake.md: the E-Mail-Eingang's three workspace-owned tables.
+    await db.insert(mailIntakeSettings).values({ workspaceId: workspace.id, token: `cascade${randomUUID().replace(/-/g, "").slice(0, 13)}` });
+    await db.insert(mailIntakeAllowedSenders).values({ workspaceId: workspace.id, kind: "domain", value: "lieferant.de" });
+    await db.insert(inboundEmails).values({ workspaceId: workspace.id, providerEmailId: randomUUID(), fromAddress: "a@lieferant.de" });
+
     // A second workspace's own document, to prove the delete below never reaches it.
     const [otherDocument] = await db
       .insert(documents)
@@ -570,6 +576,9 @@ describe("createDrizzleWorkspaceRepository.delete (F5, decisions/0027-hardening-
     expect(await db.select().from(workspaceMonthlyUsage).where(eq(workspaceMonthlyUsage.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(quotaPackagePurchases).where(eq(quotaPackagePurchases.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(intakeSourceFingerprints).where(eq(intakeSourceFingerprints.workspaceId, workspace.id))).toHaveLength(0);
+    expect(await db.select().from(mailIntakeSettings).where(eq(mailIntakeSettings.workspaceId, workspace.id))).toHaveLength(0);
+    expect(await db.select().from(mailIntakeAllowedSenders).where(eq(mailIntakeAllowedSenders.workspaceId, workspace.id))).toHaveLength(0);
+    expect(await db.select().from(inboundEmails).where(eq(inboundEmails.workspaceId, workspace.id))).toHaveLength(0);
     // `document_contacts` has no `workspace_id` column of its own - scoped via the document
     // it cascaded from instead.
     expect(await db.select().from(documentContacts).where(eq(documentContacts.documentId, document.id))).toHaveLength(0);

@@ -162,6 +162,13 @@
       "when": 1792577949869,
       "tag": "0022_wooden_the_liberteens",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792661492378,
+      "tag": "0023_round_junta",
+      "breakpoints": true
     }
   ]
 }

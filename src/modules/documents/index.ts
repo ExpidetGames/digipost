@@ -63,3 +63,9 @@ export {
   type TabularProposalIntakeResult,
   type TabularRejectedIntakeResult,
 } from "./core/intake-result";
+// decisions/0075-email-intake.md: the mail-intake use case turns each mail attachment into a
+// document through the very same byte sniffing and PDF assembly the upload route uses (pure,
+// `pdf-lib` only, no I/O), so it needs them from this neutral entrypoint rather than
+// `server.ts`, which a use case must never import.
+export { processIntakeUpload, type ProcessedIntakeUpload, type ProcessIntakeUploadResult } from "./core/intake-upload-processing";
+export { MAX_UPLOAD_PAGES } from "./core/upload-limits";

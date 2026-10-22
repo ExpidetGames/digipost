@@ -14,7 +14,9 @@ Maintenance triggers:
   decisions/0070-several-workspaces-per-user.md)
 - `src/modules/workspaces`'s `getMembershipForUser` use case's return shape changes
 - A new route or Server Action needs workspace-scoped access
-Last verified: 2026-10-03, decisions/0070-several-workspaces-per-user.md: a user may belong
+Last verified: 2026-10-22, decisions/0075-email-intake.md: added `PERMISSIONS.mailIntakeManage`
+(`"mail_intake.manage"`, admin-only) - gates every E-Mail-Eingang action and the received-mail
+log; every member still sees the address. Previously 2026-10-03, decisions/0070-several-workspaces-per-user.md: a user may belong
 to several workspaces, so `resolveAccess` now also decides WHICH one a request acts in. It
 reads the active-workspace cookie (`server/active-workspace-cookie.ts`), uses the workspace
 it names only if the caller's membership list (read from the database on every request)
