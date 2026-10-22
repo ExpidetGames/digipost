@@ -112,6 +112,53 @@ describe("serverEnv", () => {
     });
   });
 
+  // decisions/0075-email-intake.md: the E-Mail-Eingang variables are all optional - without
+  // them the feature is off, never a startup failure.
+  it("leaves the E-Mail-Eingang fields undefined when unset", () => {
+    withEnv(
+      { ...validEnv(), RESEND_API_KEY: undefined, RESEND_WEBHOOK_SECRET: undefined, INBOUND_EMAIL_DOMAIN: undefined, INBOUND_MAIL_PROVIDER: undefined },
+      () => {
+        const env = serverEnv();
+        expect(env.RESEND_API_KEY).toBeUndefined();
+        expect(env.RESEND_WEBHOOK_SECRET).toBeUndefined();
+        expect(env.INBOUND_EMAIL_DOMAIN).toBeUndefined();
+        expect(env.INBOUND_MAIL_PROVIDER).toBeUndefined();
+      },
+    );
+  });
+
+  it("accepts the E-Mail-Eingang fields when present", () => {
+    withEnv(
+      {
+        ...validEnv(),
+        RESEND_API_KEY: "re_test",
+        RESEND_WEBHOOK_SECRET: "whsec_dGVzdA==",
+        INBOUND_EMAIL_DOMAIN: "inbox.example.de",
+        INBOUND_MAIL_PROVIDER: "resend",
+      },
+      () => {
+        const env = serverEnv();
+        expect(env.INBOUND_EMAIL_DOMAIN).toBe("inbox.example.de");
+        expect(env.INBOUND_MAIL_PROVIDER).toBe("resend");
+      },
+    );
+  });
+
+  it("rejects an INBOUND_EMAIL_DOMAIN that is an address or URL rather than a bare domain", () => {
+    withEnv({ ...validEnv(), INBOUND_EMAIL_DOMAIN: "post@inbox.example.de" }, () => {
+      expect(() => serverEnv()).toThrow();
+    });
+    withEnv({ ...validEnv(), INBOUND_EMAIL_DOMAIN: "https://inbox.example.de" }, () => {
+      expect(() => serverEnv()).toThrow();
+    });
+  });
+
+  it("rejects an INBOUND_MAIL_PROVIDER value other than resend/fake", () => {
+    withEnv({ ...validEnv(), INBOUND_MAIL_PROVIDER: "sendgrid" }, () => {
+      expect(() => serverEnv()).toThrow();
+    });
+  });
+
   it("defaults S3_FORCE_PATH_STYLE to false when unset", () => {
     withEnv(validEnv(), () => {
       expect(serverEnv().S3_FORCE_PATH_STYLE).toBe(false);

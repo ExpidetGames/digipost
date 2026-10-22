@@ -12,7 +12,15 @@ Maintenance triggers:
   ownership table below, its slot to `Repositories`)
 - `src/persistence/schema/**` changes (the migration baseline note may need updating)
 - The role/grant model changes (`src/persistence/sql/grants/grants.sql`)
-Last verified: 2026-10-03, decisions/0070-several-workspaces-per-user.md:
+Last verified: 2026-10-22, decisions/0075-email-intake.md: new owner area `mail-intake`
+(`schema/mail-intake.ts`, `repositories/{contracts,drizzle}/mail-intake-repository.ts` as
+`Repositories.mailIntake`, `use-cases/mail-intake-use-cases.ts`, wired in
+`composition/create-request-services.ts` with `getInboundMailProvider()`/`getInboundEmailDomain()`
+and the already-built `documents`, plus two handlers in `composition/job-handlers.ts`),
+migration `0023_round_junta.sql`. No grants change: `grants.sql`'s default privileges already
+cover new tables for `app_runtime`; the webhook uses the runtime connection like the cron
+routes, not `app_public`. `findSettingsByToken` is the one deliberately unscoped read (the
+token is the routing key). Previously 2026-10-03, decisions/0070-several-workspaces-per-user.md:
 `workspace_members.user_id` lost its unique constraint (a user may belong to several
 workspaces); a composite unique on `(workspace_id, user_id)` and a plain index on `user_id`
 replaced it, migration `0021_glamorous_epoch.sql`. `WorkspaceMemberRepository.findByUserId`
@@ -220,6 +228,7 @@ enforces.
 | `jobs.ts` | `public` | `jobs` | `src/platform/jobs` (decisions/0016-processing-pipeline-and-ai.md) - the async job queue: claim/lease/backoff, domain-free |
 | `contacts.ts` | `public` | `contacts`, `document_contacts`, `contact_change_proposals` | `src/modules/contacts` (decisions/0019-contacts.md) - "Firmenkontakte" extracted from documents: matching, verification/fill-or-propose semantics, and the document-to-contact link with its `role` column |
 | `accounts.ts` | `public` | `accounts`, `transactions`, `import_batches`, `settlement_lines` | `src/modules/accounts` (decisions/0024-accounts-and-transactions.md, F2; decisions/0026-platform-settlements.md, F4) - bank/clearing accounts, the transactions imported from a confirmed intake document, one import batch per document, and (F4) a confirmed settlement report's own revenue/fee/refund/payout lines; references both `workspaces.ts` and `documents.ts`. F5 (decisions/0027-hardening-and-deletion.md) added a partial unique index, `accounts_workspace_platform_clearing_key` (`workspace_id, platform) where type = 'clearing'` |
+| `mail-intake.ts` | `public` | `mail_intake_settings`, `mail_intake_allowed_senders`, `inbound_emails` | `src/modules/mail-intake` (decisions/0075-email-intake.md) - the per-workspace inbound address (lazily created, token unique across workspaces), the sender allowlist, and the received-mail log with per-attachment results (unique on `(provider_email_id, workspace_id)`); all cascade from `workspaces.id`, migration `0023_round_junta.sql` |
 | `payments.ts` | `public` | `document_transactions`, `payment_aliases`, `payment_rejections`, `payment_no_document_rules` | `src/modules/payments` (decisions/0025-payment-matching-wiring.md, F3b) - every matching decision (suggested/confirmed/rejected) between one document and one transaction, learned counterparty-name aliases, permanent rejection records, and "kein Beleg nötig, für diese Gegenpartei immer" standing rules; references `accounts.ts`/`contacts.ts`/`documents.ts`/`workspaces.ts`, exported last of all from `schema/index.ts` |
 
 **Workflow:**

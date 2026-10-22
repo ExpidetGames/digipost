@@ -15,7 +15,12 @@ Maintenance triggers:
 - A new vendor SDK or a new sensitive env var is introduced
 - `scripts/structure/**` gains or loses a rule (keep the rule table and the
   ```structure block names in 1:1 correspondence, enforced by the checker itself)
-Last verified: 2026-10-02, decisions/0066-abschluss-check-and-export.md added
+Last verified: 2026-10-22, decisions/0075-email-intake.md added two owners under the
+existing container rules, `src/modules/mail-intake` (the E-Mail-Eingang's domain, UI and
+admin notification e-mail) and `src/platform/inbound-mail` (the Resend port and webhook
+verification), plus the `env-access` rows for `RESEND_API_KEY`/`RESEND_WEBHOOK_SECRET`, the
+`vendor-sdk` row confining `svix` to `src/platform/inbound-mail/`, and
+`src/modules/mail-intake/server/emails/` on the `@react-email/` row. Previously, 2026-10-02, decisions/0066-abschluss-check-and-export.md added
 `src/modules/closing` as a new owner under the existing `src/modules/<capability>/`
 container rule - a capability slice with no table, no new root, no new sensitive env var,
 and no new confinement row (its two new packages, `exceljs` and `archiver`, are
@@ -486,6 +491,8 @@ S3_ACCESS_KEY_ID         src/platform/object-storage/, src/platform/env/
 S3_SECRET_ACCESS_KEY     src/platform/object-storage/, src/platform/env/
 S3_FORCE_PATH_STYLE      src/platform/object-storage/, src/platform/env/
 MISTRAL_API_KEY          src/platform/mistral/, src/platform/env/
+RESEND_API_KEY           src/platform/inbound-mail/, src/platform/env/
+RESEND_WEBHOOK_SECRET    src/platform/inbound-mail/, src/platform/env/
 ```
 
 A named variable above is allowed in the listed file(s)/prefix(es) and in any
@@ -516,11 +523,12 @@ pg                src/persistence/foundation/, scripts/db/, tests/e2e/helpers/
 better-auth       src/platform/auth/
 @sentry/          src/instrumentation.ts, src/instrumentation-client.ts, src/sentry.server.config.ts, src/sentry.edge.config.ts, next.config.ts, src/platform/observability/
 nodemailer        src/platform/mailer/
-@react-email/     src/platform/auth/server/emails/, src/platform/mailer/, src/modules/workspaces/server/emails/, src/modules/documents/server/emails/, src/modules/billing/server/emails/
+@react-email/     src/platform/auth/server/emails/, src/platform/mailer/, src/modules/workspaces/server/emails/, src/modules/documents/server/emails/, src/modules/billing/server/emails/, src/modules/mail-intake/server/emails/
 @vercel/functions src/persistence/foundation/
 @aws-sdk/         src/platform/object-storage/
 fast-xml-parser   src/modules/intake/
 csv-parse         src/modules/intake/
+svix              src/platform/inbound-mail/
 ```
 
 A package specifier that starts with the left column (prefix match - `@react-email/`

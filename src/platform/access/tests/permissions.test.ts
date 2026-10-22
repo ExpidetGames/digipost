@@ -26,5 +26,8 @@ describe("roleHasPermission", () => {
     expect(roleHasPermission("member", PERMISSIONS.membersManage)).toBe(false);
     expect(roleHasPermission("member", PERMISSIONS.billingManage)).toBe(false);
     expect(roleHasPermission("member", PERMISSIONS.companyProfileManage)).toBe(false);
+    // decisions/0075-email-intake.md: a member sees the address but never changes who may send to it.
+    expect(roleHasPermission("member", PERMISSIONS.mailIntakeManage)).toBe(false);
+    expect(roleHasPermission("admin", PERMISSIONS.mailIntakeManage)).toBe(true);
   });
 });

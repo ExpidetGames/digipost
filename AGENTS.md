@@ -9,7 +9,9 @@ Maintenance triggers:
 - Repository-wide safety or workflow rules change
 - STRUCTURE.md or the structure checker lands and changes what is machine-enforced
 - Documentation governance rules in DOC_RULES.md change
-Last verified: 2026-09-20, F5 (hardening): refreshed the owners list (added
+Last verified: 2026-10-22, decisions/0075-email-intake.md: added the `src/modules/mail-intake`
++ `src/platform/inbound-mail` owners, the webhook's workspace-scoping exception, and Resend to
+the "Mistral and personal data" rule. Previously 2026-09-20, F5 (hardening): refreshed the owners list (added
 `src/modules/{intake,contacts,accounts,payments}`, all missing since their own phases
 landed) and the domain rules (finance admin-only, intake confirmation vs. correction,
 workspace-deletion cascade, the one auto-deletion exception, the `requireWorkspaceAdmin`
@@ -88,6 +90,12 @@ detail; `decisions/README.md` indexes the ADR behind each one):
   decisions/0025-payment-matching-wiring.md.
 - `src/platform/object-storage` - the only holder of `S3_*` credentials,
   decisions/0012-object-storage.md.
+- `src/modules/mail-intake` + `src/platform/inbound-mail` - the E-Mail-Eingang: a secret
+  `post-<token>@<INBOUND_EMAIL_DOMAIN>` address per workspace, Resend's `email.received`
+  webhook (`POST /api/webhooks/resend`), the sender policy and its authentication check, and
+  every attachment turned into a document through `createFromUpload`;
+  `src/platform/inbound-mail` is the only holder of `RESEND_API_KEY`/`RESEND_WEBHOOK_SECRET`,
+  decisions/0075-email-intake.md.
 - `src/modules/dashboard-shell`, `src/modules/sign-in`, `src/platform/auth`,
   `src/platform/mailer`, `src/platform/api-pipeline`, `src/platform/observability`,
   `src/platform/env`, `src/persistence`, `src/shared/ui-primitives`, `src/i18n` - the
@@ -112,7 +120,13 @@ Digipost-specific invariants a change must not silently break:
   (`GET /api/cron/purge-rejected-intake`) is a deliberate, narrow exception: it queries
   across every workspace by design, the same way the job queue's own cron sweep already
   does, since it is unattended background maintenance work with no caller session to scope
-  to at all.
+  to at all. `POST /api/webhooks/resend` is the second such exception
+  (decisions/0075-email-intake.md): a signature-verified webhook with no session, where the
+  secret token in the recipient address is what selects the workspace. Resend forwards EVERY
+  mail the whole account receives there, so a recipient counts only when it is exactly
+  `post-<token>@<INBOUND_EMAIL_DOMAIN>` with an existing, enabled token; anything else is
+  answered 200 and never stored (no row, no job, no download, no PII in logs). Never loosen
+  that match.
 - **Quota semantics.** The total-document limit counts documents currently stored
   (deleting one frees capacity); the monthly limit counts documents created in the
   current calendar month UTC (deleting does not refund it); a one-off package raises the
@@ -177,7 +191,12 @@ Digipost-specific invariants a change must not silently break:
   through this pipeline is explicitly blocked on that paperwork landing first
   (decisions/0016-processing-pipeline-and-ai.md's "Data protection note", README.md's
   "Before going to production"). Do not treat "the fake adapter works in tests" as
-  evidence the real integration is compliance-ready.
+  evidence the real integration is compliance-ready. The same applies to Resend as the
+  receiver of the E-Mail-Eingang (`src/platform/inbound-mail`, decisions/0075-email-intake.md):
+  incoming mail (sender, subject, body, attachments) passes through and is stored by Resend,
+  no DPA with Resend exists yet and its data residency is unclear, so real customer mail
+  through that path is blocked on the same paperwork. `RESEND_API_KEY`/`RESEND_WEBHOOK_SECRET`
+  fall under the same "never read, opened, or created by an agent" rule as `MISTRAL_API_KEY`.
 
 ## Workflow
 

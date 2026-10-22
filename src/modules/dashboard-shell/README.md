@@ -14,7 +14,8 @@ Maintenance triggers:
 - The header's content or the mobile-nav breakpoint changes
 - The workspace switcher's list, ordering, or entries change
 - A nav entry needs to be hidden from members who lack a permission
-Last verified: 2026-10-03, decisions/0070-several-workspaces-per-user.md: the sidebar's and
+Last verified: 2026-10-22, decisions/0075-email-intake.md: "E-Mail-Eingang" is a real link to
+`/dashboard/email-intake`. Previously 2026-10-03, decisions/0070-several-workspaces-per-user.md: the sidebar's and
 mobile header's plain workspace name became `ui/workspace-switcher.tsx`, listing every
 workspace the signed-in user belongs to, marking the active one, and offering "Weitere Firma
 anlegen" (`/onboarding`). `DashboardShell` gained `activeWorkspaceId` and `workspaces`, both
@@ -67,7 +68,8 @@ entry point.
 - `core/nav-items.ts` - `NAV_SECTIONS`, the one list both `ui/nav-links.tsx` instances (desktop
   sidebar, mobile panel) render from, grouped by the moment a user is in rather than by the
   tables behind it (decisions/0055-navigation-by-use-case.md): a standalone "Start", then
-  "Post" (`/dashboard` "Posteingang", `/dashboard/scan` "Post erfassen", "E-Mail-Eingang"),
+  "Post" (`/dashboard` "Posteingang", `/dashboard/scan` "Post erfassen", `/dashboard/email-intake`
+  "E-Mail-Eingang", no permission filter, decisions/0075-email-intake.md),
   "Finanzen" (`/dashboard/finance` "Konten", `/dashboard/finance/zuordnung` "Zuordnung",
   `/dashboard/finance/offene-posten` "Offene Posten", all `finance.read`, F2/F3b,
   decisions/0024-accounts-and-transactions.md, decisions/0025-payment-matching-wiring.md),
@@ -79,8 +81,7 @@ entry point.
   decisions/0017-billing-tiers-and-packages.md, no `permission` filter: every member sees the
   page, only its own controls are permission-gated). P2c's camera scanner
   (`src/modules/scanner`) plugs into "Post erfassen"'s own page (a "Kamera" tab), not a nav
-  entry of its own. A `NavEntry` with `href: null` ("Start", "E-Mail-Eingang",
-  "Monatsabschluss", "Steuerberater-Export") is planned but not built and renders as a row with
+  entry of its own. A `NavEntry` with `href: null` is planned but not built and renders as a row with
   a "Demnächst" badge instead of a link. The optional `permission` field
   (`@/platform/access`'s `Permission`) hides an entry from anyone whose bundle does not include
   it, and `visibleNavSections` drops a section that ends up empty together with its heading, so

@@ -26,6 +26,10 @@ for (const key of [
   "BETTER_AUTH_SECRET",
   "S3_ACCESS_KEY_ID",
   "S3_SECRET_ACCESS_KEY",
+  // decisions/0075-email-intake.md: a developer's real Resend credentials in `.env.local` must
+  // never reach a unit test (which would then talk to the real API if `fetch` were not stubbed).
+  "RESEND_API_KEY",
+  "RESEND_WEBHOOK_SECRET",
 ]) {
   delete process.env[key];
 }

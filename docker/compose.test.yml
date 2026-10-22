@@ -49,6 +49,12 @@ x-app-env: &app-env
   # "true" so tier-change/package-purchase tests exercise the real (test-mode) code path
   # rather than the "not configured" refusal.
   BILLING_TEST_MODE: "true"
+  # E-Mail-Eingang (src/platform/inbound-mail, decisions/0075-email-intake.md): explicit "fake"
+  # so no test ever calls Resend; the webhook signature is still verified for real, against
+  # this dummy secret (tests sign their payloads with the same value).
+  INBOUND_MAIL_PROVIDER: fake
+  INBOUND_EMAIL_DOMAIN: inbox.digipost.test
+  RESEND_WEBHOOK_SECRET: whsec_dGVzdC1yZXNlbmQtd2ViaG9vay1zZWNyZXQtb25seS1mb3ItdGhlLXRlc3Qtc3RhY2s=
   # vitest.config.ts's `db`/`integration` projects (scripts/test/test-stack-guard.ts) refuse
   # to run at all without this - it is what actually makes `pnpm test:db`/`pnpm test:int`
   # safe to run only inside this hermetic stack, never against the local dev database

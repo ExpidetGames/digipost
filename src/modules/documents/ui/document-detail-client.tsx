@@ -24,8 +24,12 @@ export function DocumentDetailClient({
   document,
   isFakeAiProvider,
   kickAction,
+  emailSender,
 }: {
   document: DocumentDetailView;
+  /** decisions/0075-email-intake.md: the sender of the mail this document arrived with, for a
+   * document created by the E-Mail-Eingang (it has no uploader). */
+  emailSender?: string | null;
   /** Whether the fake AI provider is bound (requirement 9): shows a "Testmodus"-hint. */
   isFakeAiProvider: boolean;
   /** Schedules `runDueJobs` for the caller's own workspace (the "kick" trigger); passed down
@@ -161,6 +165,12 @@ export function DocumentDetailClient({
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">{t("uploadedBy")}</dt>
               <dd className="text-foreground">{document.uploadedByEmail}</dd>
+            </div>
+          ) : null}
+          {!document.uploadedByEmail && emailSender ? (
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted-foreground">{t("receivedByEmailFrom")}</dt>
+              <dd className="break-all text-foreground">{emailSender}</dd>
             </div>
           ) : null}
           <div className="flex justify-between gap-2">

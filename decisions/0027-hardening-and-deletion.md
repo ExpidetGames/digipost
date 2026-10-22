@@ -106,6 +106,9 @@ here explicitly rather than silently assumed safe, in case that feature ever lan
 (`src/persistence/tests/workspaces-repository.db.test.ts`) seeds one row in every table above
 plus a second, untouched workspace, then proves the delete removes everything for the first
 workspace and nothing for the second, against real Postgres, not only asserted.
+Extended by decisions/0075-email-intake.md: `mail_intake_settings`, `mail_intake_allowed_senders`
+and `inbound_emails` (all `workspace_id uuid not null ... on delete cascade`) joined this list and
+that test.
 
 **Storage cleanup: synchronous best-effort plus a durable retry job.** `ObjectStorage` gained
 `listObjects(prefix)` and `deleteObjects(keys)` (paginated `ListObjectsV2`/batched

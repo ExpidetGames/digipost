@@ -21,6 +21,7 @@ import type { ContactProposalRepository, ContactRepository, DocumentContactRepos
 import type { DocumentRepository } from "./documents-repository";
 import type { IntakeFingerprintRepository } from "./intake-fingerprints-repository";
 import type { JobsRepository } from "./jobs-repository";
+import type { MailIntakeRepository } from "./mail-intake-repository";
 import type {
   DocumentTransactionRepository,
   PaymentAliasRepository,
@@ -125,6 +126,14 @@ export type {
   UpsertImportBatchRow,
 } from "./accounts-repository";
 export type {
+  CreateInboundEmailRow,
+  InboundEmailRow,
+  MailIntakeAllowedSenderRow,
+  MailIntakeRepository,
+  MailIntakeSettingsRow,
+  UpdateInboundEmailPatch,
+} from "./mail-intake-repository";
+export type {
   CreateDocumentTransactionRow,
   DecideDocumentTransactionInput,
   DocumentTransactionRepository,
@@ -158,6 +167,8 @@ export type Repositories = {
   paymentAlias: PaymentAliasRepository;
   paymentRejection: PaymentRejectionRepository;
   paymentNoDocumentRule: PaymentNoDocumentRuleRepository;
+  /** decisions/0075-email-intake.md, owner `src/modules/mail-intake`. */
+  mailIntake: MailIntakeRepository;
   // … one entry per repository
 };
 
