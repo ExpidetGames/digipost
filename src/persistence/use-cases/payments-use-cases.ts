@@ -133,9 +133,9 @@ export interface PaymentsUseCases {
   addAliasForContact(input: { workspaceId: string; contactId: string; name: string; actingUserId: string | null }): Promise<void>;
   /** decisions/0044: the workspace's current auto-confirm mode, for the finance page. */
   getAutoConfirmMode(input: { workspaceId: string }): Promise<PaymentAutoConfirmMode>;
-  /** decisions/0044: schedules a workspace-wide matching run in a few seconds (debounced), e.g.
-   * right after an admin changed the auto-confirm mode, so the new mode also applies to the open
-   * suggestions. */
+  /** decisions/0044: schedules a workspace-wide matching run due now (one queued run per
+   * workspace, decisions/0076), e.g. right after an admin changed the auto-confirm mode, so the
+   * new mode also applies to the open suggestions. */
   scheduleMatching(input: { workspaceId: string }): Promise<void>;
   runMatching(input: MatchPaymentsInput): Promise<RunMatchingResult>;
   /** F4: matches one confirmed settlement report's `revenue` settlement lines against the
@@ -805,7 +805,9 @@ async function scheduleFollowUpIfNeeded(deps: PaymentsUseCaseDeps, workspaceId: 
   // document_done run, each follow-up) queued another one, and since almost every workspace has
   // unmatched transactions that never get a document (fees, salaries), the chains never ended:
   // 26 were queued after one bulk upload, each calling the AI arbiter every 6 hours.
-  if (await deps.repos.jobs.hasScheduledPending({ kind: JOB_KINDS.matchPayments, workspaceId, now })) return;
+  // decisions/0076: any queued run counts, also one due right now (a document finished while
+  // this run was going); that run schedules its own follow-up when it finishes.
+  if (await deps.repos.jobs.hasQueuedPending({ kind: JOB_KINDS.matchPayments, workspaceId, now })) return;
 
   await deps.repos.jobs.enqueue({
     kind: JOB_KINDS.matchPayments,
@@ -894,13 +896,11 @@ export function createPaymentsUseCases(deps: PaymentsUseCaseDeps): PaymentsUseCa
     },
 
     async scheduleMatching({ workspaceId }) {
-      const scheduledAt = now();
-      await deps.repos.jobs.scheduleDebounced({
+      await deps.repos.jobs.scheduleNow({
         kind: JOB_KINDS.matchPayments,
         workspaceId,
         payload: { workspaceId, trigger: "cron" } satisfies MatchPaymentsInput,
-        runAt: new Date(scheduledAt.getTime() + 5_000),
-        now: scheduledAt,
+        now: now(),
       });
     },
 

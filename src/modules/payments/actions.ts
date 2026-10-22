@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { PERMISSIONS } from "@/platform/access";
 import { requirePermission } from "@/platform/access/server";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
+import { runDueJobs } from "@/platform/jobs/server";
 import { getRequestServices } from "@/persistence/composition/request-services";
 import { PAYMENT_ERROR } from "@/persistence/use-cases/payments-use-cases";
 import { UseCaseError } from "@/persistence/use-cases/errors";
@@ -177,7 +180,8 @@ export async function markSettledWithoutPaymentAction(input: unknown): Promise<A
 
 /** decisions/0044: an admin chooses which payment suggestions are confirmed without a human.
  * The mode lives on the workspace (written by `src/modules/workspaces`' use case); a matching run
- * is scheduled right away so the new mode also applies to the suggestions already open. */
+ * is scheduled right away so the new mode also applies to the suggestions already open, and the
+ * job runner starts after the response to run it (decisions/0076). */
 export async function setPaymentAutoConfirmAction(input: unknown): Promise<ActionResult<void, PaymentActionErrorCode>> {
   const parsed = paymentAutoConfirmInputSchema.safeParse(input);
   if (!parsed.success) return { status: "error", errorCode: "invalid_input" };
@@ -188,7 +192,9 @@ export async function setPaymentAutoConfirmAction(input: unknown): Promise<Actio
   try {
     const services = getRequestServices();
     await services.workspaces.setPaymentAutoConfirm({ workspaceId: access.access.workspace.id, mode: parsed.data.mode });
-    await services.payments.scheduleMatching({ workspaceId: access.access.workspace.id });
+    const workspaceId = access.access.workspace.id;
+    await services.payments.scheduleMatching({ workspaceId });
+    after(() => runDueJobs({ workspaceId, limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS }));
     revalidateAfterDecision();
     return { status: "success", data: undefined };
   } catch (err) {

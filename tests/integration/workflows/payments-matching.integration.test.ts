@@ -11,6 +11,7 @@
 // further time changes nothing (idempotent).
 import { randomUUID } from "node:crypto";
 
+import { and, eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 
 let currentUser: { id: string; email: string } | null = null;
@@ -29,6 +30,7 @@ import { createDrizzleDocumentRepository } from "@/persistence/repositories/driz
 import { createDrizzleWorkspaceMemberRepository, createDrizzleWorkspaceRepository } from "@/persistence/repositories/drizzle/workspaces-repository";
 import type { CreateDocumentRow, DocumentDirection, MarkDocumentDoneInput } from "@/persistence/repositories/contracts";
 import { user } from "@/persistence/schema/auth";
+import { jobs } from "@/persistence/schema/jobs";
 import { runDueJobs } from "@/platform/jobs/server";
 
 import { POST } from "@/app/api/documents/route";
@@ -70,6 +72,43 @@ const CAMT_053_XML = `<?xml version="1.0" encoding="UTF-8"?>
     </Stmt>
   </BkToCstmrStmt>
 </Document>`;
+
+// decisions/0076: a debit to the fake OCR engine's Telekom invoice (incoming, 49.99 EUR), booked
+// to the same counterparty name - a deterministic name-and-amount match.
+const TELEKOM_CAMT_053_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02">
+  <BkToCstmrStmt>
+    <Stmt>
+      <Id>STMT-MATCH-AFTER-TRIGGER</Id>
+      <Acct><Id><IBAN>DE89370400440532019001</IBAN></Id><Ccy>EUR</Ccy></Acct>
+      <Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">500.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-04-01</Dt></Dt></Bal>
+      <Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">450.01</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-04-30</Dt></Dt></Bal>
+      <Ntry>
+        <Amt Ccy="EUR">49.99</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <BookgDt><Dt>2026-04-15</Dt></BookgDt>
+        <NtryDtls><TxDtls>
+          <RltdPties><Cdtr><Nm>Telekom Deutschland GmbH</Nm></Cdtr></RltdPties>
+          <RmtInf><Ustrd>Telefonrechnung</Ustrd></RmtInf>
+        </TxDtls></NtryDtls>
+      </Ntry>
+    </Stmt>
+  </BkToCstmrStmt>
+</Document>`;
+
+/** A 1x1 PNG: the upload route assembles it into a PDF, which the fake OCR engine reads as the
+ * Telekom invoice (`src/modules/documents/core/fake-ocr-engine.ts`). */
+const PNG_1X1_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+/** An opaque red 1x1 PNG: a different assembled PDF, so the exact-duplicate check accepts it
+ * (`processing-pipeline.integration.test.ts` uses the same pair). */
+const PNG_1X1_VARIANT_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC";
+
+async function matchPaymentJobs(workspaceId: string) {
+  return getDb()
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.workspaceId, workspaceId), eq(jobs.kind, "match-payments")));
+}
 
 async function createTestUser(label: string): Promise<{ id: string; email: string }> {
   const email = `${label}-${randomUUID()}@example.test`;
@@ -253,6 +292,85 @@ describe("payment matching (F3b, real Postgres + MinIO, fake AI)", () => {
       expect(finalSectionA?.suggestions).toHaveLength(0);
       const finalSectionB = await getRequestServices().payments.getDocumentPaymentSection(workspace.id, invoiceB);
       expect(finalSectionB?.suggestions).toHaveLength(0);
+    },
+    30_000,
+  );
+
+  // decisions/0076: production runs jobs only from `after()` and a two-hourly cron, so a
+  // finished invoice and an imported statement must be matched by the very runner invocation
+  // that processed them (here: one `runDueJobs` call each, like the upload route's `after()`).
+  it(
+    "matches right after every trigger: a statement import and an invoice upload each end matched within their own runDueJobs call",
+    async () => {
+      const founder = await createTestUser("match-after-trigger");
+      currentUser = founder;
+      const workspace = await createWorkspaceForUser(founder.id, "Sofortabgleich GmbH");
+
+      // 1. The statement: process-document -> import-account-transactions -> match-payments,
+      // all in ONE runner call. Nothing to match yet, so the run queues its six-hour follow-up.
+      const statementResponse = await POST(postRequest(uploadForm(Buffer.from(TELEKOM_CAMT_053_XML, "utf8"), "kontoauszug.xml", "application/xml")), {} as never);
+      expect(statementResponse.status).toBe(201);
+      const statementRun = await runDueJobs({ workspaceId: workspace.id, limit: 5 });
+      expect(statementRun.processed).toBe(3);
+
+      const afterStatement = await matchPaymentJobs(workspace.id);
+      expect(afterStatement.filter((j) => j.status === "done")).toHaveLength(1);
+      const queued = afterStatement.filter((j) => j.status === "pending");
+      expect(queued).toHaveLength(1);
+      expect(queued[0]!.payload).toMatchObject({ trigger: "cron" });
+      expect(queued[0]!.runAt.getTime()).toBeGreaterThan(Date.now() + 5 * 3_600_000);
+
+      // 2. The invoice: process-document -> match-payments in ONE runner call. The pending
+      // six-hour follow-up must not swallow the immediate run: it is pulled forward and runs now.
+      const invoiceForm = new FormData();
+      invoiceForm.append("files", new File([Buffer.from(PNG_1X1_B64, "base64")], "seite-1.png", { type: "image/png" }));
+      invoiceForm.append("fileName", "rechnung-telekom.pdf");
+      const invoiceResponse = await POST(postRequest(invoiceForm), {} as never);
+      expect(invoiceResponse.status).toBe(201);
+      const { documentId } = (await invoiceResponse.json()) as { documentId: string };
+
+      const invoiceRun = await runDueJobs({ workspaceId: workspace.id, limit: 5 });
+      expect(invoiceRun.processed).toBe(2);
+
+      const section = await getRequestServices().payments.getDocumentPaymentSection(workspace.id, documentId);
+      // The default auto-confirm mode ("system", decisions/0044) books this deterministic
+      // name-and-amount match by itself.
+      expect(section?.paymentStatus).toBe("paid");
+      expect(section?.matchedTransactions).toHaveLength(1);
+      expect(section?.matchedTransactions[0]).toMatchObject({ status: "confirmed", matchedBy: "auto", allocatedAmountCents: 4_999 });
+
+      const afterInvoice = await matchPaymentJobs(workspace.id);
+      expect(afterInvoice.filter((j) => j.status === "done")).toHaveLength(2);
+      // Everything is resolved now, so no follow-up remains queued.
+      expect(afterInvoice.filter((j) => j.status === "pending")).toHaveLength(0);
+    },
+    30_000,
+  );
+
+  it(
+    "a bulk upload matches once per runner call, after every document it processed",
+    async () => {
+      const founder = await createTestUser("match-bulk");
+      currentUser = founder;
+      const workspace = await createWorkspaceForUser(founder.id, "Stapelupload GmbH");
+
+      // Two invoices uploaded before any runner starts (one request each, like the upload
+      // form), from distinct image bytes so the duplicate check accepts the second.
+      for (const [index, base64] of [PNG_1X1_B64, PNG_1X1_VARIANT_B64].entries()) {
+        const form = new FormData();
+        form.append("files", new File([Buffer.from(base64, "base64")], "seite-1.png", { type: "image/png" }));
+        form.append("fileName", `rechnung-telekom-${index + 1}.pdf`);
+        const response = await POST(postRequest(form), {} as never);
+        expect(response.status).toBe(201);
+      }
+
+      const run = await runDueJobs({ workspaceId: workspace.id, limit: 5 });
+
+      // Two documents and ONE matching run: the first finished invoice queued it due now, the
+      // second found it still queued, and it was claimed only after both documents.
+      expect(run.processed).toBe(3);
+      const matchJobs = await matchPaymentJobs(workspace.id);
+      expect(matchJobs.filter((j) => j.status === "done")).toHaveLength(1);
     },
     30_000,
   );

@@ -16,7 +16,9 @@ Last verified: 2026-09-22, initial version
 
 ## Status
 
-Accepted
+Accepted. Point 4 refined by decisions/0076-match-after-every-trigger.md (2026-10-22): the check is
+now `hasQueuedPending` and counts any queued run, also one due immediately, and a trigger pulls a
+queued follow-up forward instead of being swallowed by it.
 
 ## Context
 

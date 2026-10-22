@@ -27,7 +27,7 @@ import {
 } from "@/modules/accounts";
 import { normalizeIban } from "@/modules/contacts";
 import { parseIntakeResult } from "@/modules/documents";
-import { MATCHING_DEBOUNCE_MS, PAYMENT_STATUSES, resolveContactForCounterparty, type ContactAliasMap } from "@/modules/payments";
+import { PAYMENT_STATUSES, resolveContactForCounterparty, type ContactAliasMap } from "@/modules/payments";
 import { isDbError } from "@/persistence/foundation/db-errors";
 import {
   decodeTextBytes,
@@ -919,14 +919,14 @@ export function createAccountsUseCases(deps: AccountsUseCaseDeps): AccountsUseCa
         // batch" - only when this import actually inserted a NEW transaction (a re-import
         // that inserted zero new rows cannot possibly change any matching conclusion, since
         // every transaction it saw was already known before).
+        // decisions/0076: due immediately, so the job runner that ran this import also runs
+        // matching right after it, deduplicated to one queued run per workspace.
         if (inserted.length > 0) {
-          const scheduledAt = new Date();
-          await repos.jobs.scheduleDebounced({
+          await repos.jobs.scheduleNow({
             kind: JOB_KINDS.matchPayments,
             workspaceId,
             payload: { workspaceId, trigger: "import_batch" } satisfies MatchPaymentsInput,
-            runAt: new Date(scheduledAt.getTime() + MATCHING_DEBOUNCE_MS),
-            now: scheduledAt,
+            now: new Date(),
           });
           // F4 (decisions/0026-platform-settlements.md): "if the bank line arrives later, F2's
           // import hook must call back into this pairing" - a bank import may be exactly the

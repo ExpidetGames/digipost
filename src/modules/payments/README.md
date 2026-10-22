@@ -22,7 +22,12 @@ Maintenance triggers:
 - The platform-detection keyword list or the fee-invoice tolerance changes
 - The app-store payout-pairing window/subset-sum bound changes, or a third platform needs the
   same deterministic pairing (decisions/0048-app-store-reports.md)
-Last verified: 2026-10-21, decisions/0071-a-card-charge-names-its-receipt.md: stage 1 reads
+Last verified: 2026-10-22, decisions/0076-match-after-every-trigger.md: a finished
+invoice-shaped document and a statement import with new transactions queue `match-payments` due
+now (one queued run per workspace, `JobsRepository.scheduleNow`), so the runner that processed
+the trigger also matches; `MATCHING_DEBOUNCE_MS` (`core/matching-schedule.ts`) is gone.
+`setPaymentAutoConfirmAction` starts the runner in `after()`. Previously 2026-10-21,
+decisions/0071-a-card-charge-names-its-receipt.md: stage 1 reads
 the reference after the asterisk of a card charge's statement descriptor ("FACEBK
 *K3M9P2QX7R", `extractStatementReferences`) and finds it as a whole token in the document's
 OCR text (`documentNamesStatementReference`, `MatchableDocument.referenceText`). With an exact
@@ -362,6 +367,28 @@ module's types at the call site - this module still never imports `@/persistence
   list, for the same reason that decision accepted it: this can only ever widen what counts as
   a named reference, never invent a false match.
 
+## When Matching Runs
+
+`runMatching` is the `match-payments` job's handler; it always evaluates the whole workspace.
+Three things queue it (decisions/0076-match-after-every-trigger.md), each through
+`JobsRepository.scheduleNow`, so it is due immediately and at most one run per workspace is
+queued (a queued one, even a six-hour follow-up, is pulled forward instead of adding another; a
+run in progress does not count):
+
+- a document reaching `done` invoice-shaped (`processOcrDocument` in `documents-use-cases.ts`,
+  whatever started it: upload, e-mail intake, "Erneut verarbeiten", "Dokumentart ändern"),
+  `trigger: "document_done"`;
+- a statement import that inserted at least one new transaction (`importFromDocument` in
+  `accounts-use-cases.ts`), `trigger: "import_batch"`;
+- `scheduleMatching`, after an admin changed the auto-confirm mode (decisions/0044).
+
+The job runner started from the same request's `after()` claims it in a later round, after the
+documents already queued, so production never waits for the two-hourly cron. A run that leaves
+anything unresolved queues one follow-up six hours out, unless a run is already queued
+(`hasQueuedPending`, decisions/0039). Cost: every run asks the AI arbiter again about each open
+transaction whose candidates got a "no match" answer before (only a match is cached), so a bulk
+upload processed in several waves pays that once per wave; decisions/0076's "Consequences".
+
 ## What F3b Added
 
 Schema/persistence for a matching decision (`src/persistence/schema/payments.ts`:
@@ -443,15 +470,20 @@ cache-key reuse and the follow-up-job self-reschedule condition; decisions/0033/
 observed case, a contradicting-invoice-number transaction producing no suggestion at all while
 the correct transaction still auto-confirms; every decision action and its guard rails), plus
 `documents-use-cases.test.ts`/`accounts-use-cases.test.ts`'s own updated assertions for the two
-`match-payments` trigger points.
+`match-payments` trigger points (due immediately, decisions/0076), and `payments-use-cases.test.ts`'s
+follow-up cases (no second follow-up next to a queued run, a six-hour follow-up pulled forward).
 `tests/integration/workflows/payments-matching.integration.test.ts` (real Postgres + MinIO):
 a real camt.053 import whose remittance texts name two invoice numbers exactly -> both
 auto-confirm and go `paid`; a transaction with no invoice-number signal whose amount equals two
 open invoices combined -> one `collective` suggestion covering both, never auto-confirmed;
-rejecting one leg is never re-proposed; a further run changes nothing (idempotent).
+rejecting one leg is never re-proposed; a further run changes nothing (idempotent). Plus
+(decisions/0076) a statement upload and then an invoice upload each end matched within one
+`runDueJobs` call, and two invoices queued together get one matching run.
 `tests/e2e/payments.spec.ts` (`@smoke`): an admin uploads an invoice and a matching camt.053
-statement, confirms the resulting suggestion under "Zuordnung", sees "Bezahlt" on the invoice;
-a plain member sees the same status but never an amount or a counterparty.
+statement, waits for the app's own `after()` runner to finish matching (never triggering a job
+itself, `tests/e2e/helpers/jobs.ts`'s `waitForPaymentMatching`), confirms the resulting
+suggestion under "Zuordnung", sees "Bezahlt" on the invoice; a plain member sees the same status
+but never an amount or a counterparty.
 
 F4 (decisions/0026-platform-settlements.md, owned jointly with `@/modules/accounts` - see that
 module's own README "Tests" section for the full list): `matchSettlementReport`/

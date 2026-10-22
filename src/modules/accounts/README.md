@@ -18,7 +18,10 @@ Maintenance triggers:
   changes
 - `loadSettlementRows`'s Apple/Google re-detection, or either reader's own shape, changes
   (decisions/0048-app-store-reports.md)
-Last verified: 2026-10-03, decisions/0068-supplier-clearing-accounts.md: a clearing account
+Last verified: 2026-10-22, decisions/0076-match-after-every-trigger.md: `importFromDocument`
+queues its `match-payments` run due now (`JobsRepository.scheduleNow`) instead of 90 seconds
+later, and `importFromDocumentAction` starts the runner in `after()`. Previously 2026-10-03,
+decisions/0068-supplier-clearing-accounts.md: a clearing account
 may now be owned by a CONTACT instead of a platform (`accounts.contact_id`, migration
 `0020_concerned_blue_shield.sql`, with its own partial unique index
 `accounts_workspace_contact_clearing_key` and a check constraint that forbids a platform and
@@ -105,6 +108,10 @@ import batch.
   set.
 - `actions.ts` (`"use server"`): `createAccountAction`, `updateAccountAction`,
   `importFromDocumentAction` - all gated behind `PERMISSIONS.financeManage` (admin-only).
+  `importFromDocumentAction` starts the job runner in `after()`: an import that inserted new
+  transactions queues `match-payments` due now, and it runs right away instead of at the next
+  cron sweep (decisions/0076-match-after-every-trigger.md; the job-run import path gets the same
+  from the runner that ran `import-account-transactions`).
 - `server.ts` (`server-only`): read models for `/dashboard/finance`/`/dashboard/finance/[accountId]`
   (`listAccountsOverviewProjection`, `listPendingAccountDocumentsProjection`,
   `getAccountDetailProjection`, `listTransactionsProjection`, `listImportBatchesProjection`).

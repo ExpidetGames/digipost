@@ -22,7 +22,6 @@ export {
   type PaymentStatus,
 } from "./core/types";
 export { directionMatches } from "./core/direction";
-export { MATCHING_DEBOUNCE_MS } from "./core/matching-schedule";
 export { DEFAULT_PAYMENT_AUTO_CONFIRM_MODE, isPaymentAutoConfirmMode, PAYMENT_AUTO_CONFIRM_MODES, type PaymentAutoConfirmMode } from "./core/auto-confirm";
 export { derivePaymentStatus, resolveDisplayStatus, type DerivePaymentStatusInput } from "./core/payment-status";
 export {

@@ -85,8 +85,12 @@ describe("createAccountsUseCases", () => {
 
       expect(outcome).toMatchObject({ status: "imported", accountCreated: true, rowsTotal: 1, rowsImported: 1, rowsDuplicate: 0 });
       // F3b (decisions/0025-payment-matching-wiring.md): a successful import with at least one
-      // new transaction triggers a workspace-wide matching run.
-      expect(jobState.filter((j) => j.kind === "match-payments")).toHaveLength(1);
+      // new transaction triggers a workspace-wide matching run, due immediately so the runner
+      // that ran this import also runs matching (decisions/0076).
+      const matchJobs = jobState.filter((j) => j.kind === "match-payments");
+      expect(matchJobs).toHaveLength(1);
+      expect(matchJobs[0]!.runAt.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(matchJobs[0]!.payload).toMatchObject({ trigger: "import_batch" });
       expect(accountState).toHaveLength(1);
       expect(accountState[0]).toMatchObject({ iban: "DE89370400440532013000", type: "bank" });
       expect(transactionState).toHaveLength(1);

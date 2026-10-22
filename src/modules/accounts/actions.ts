@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { PERMISSIONS } from "@/platform/access";
 import { requirePermission } from "@/platform/access/server";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
+import { runDueJobs } from "@/platform/jobs/server";
 import { getRequestServices } from "@/persistence/composition/request-services";
 import { ACCOUNT_ERROR } from "@/persistence/use-cases/accounts-use-cases";
 import { UseCaseError } from "@/persistence/use-cases/errors";
@@ -121,7 +124,9 @@ export async function createContactClearingAccountAction(input: unknown): Promis
  * "Erneut importieren" / the pending-account resolution form: re-runs (or, for a
  * pending-account document, completes for the first time) the import for one document,
  * optionally against an explicit `accountId` (decisions/0024-accounts-and-transactions.md's
- * "Pending account" section). Idempotent either way.
+ * "Pending account" section). Idempotent either way. An import that added transactions queues
+ * a `match-payments` run due now; the job runner is started after the response so matching
+ * happens right away instead of at the next cron sweep (decisions/0076).
  */
 export async function importFromDocumentAction(
   input: unknown,
@@ -133,11 +138,13 @@ export async function importFromDocumentAction(
   if (access.status === "error") return { status: "error", errorCode: access.errorCode };
 
   try {
+    const workspaceId = access.access.workspace.id;
     const outcome = await getRequestServices().accounts.importFromDocument({
-      workspaceId: access.access.workspace.id,
+      workspaceId,
       documentId: parsed.data.documentId,
       accountId: parsed.data.accountId,
     });
+    after(() => runDueJobs({ workspaceId, limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS }));
     revalidatePath("/dashboard/finance");
     if (outcome.status === "imported" || outcome.status === "settlement_imported") revalidatePath(`/dashboard/finance/${outcome.accountId}`);
     return { status: "success", data: { status: outcome.status } };

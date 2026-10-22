@@ -93,7 +93,7 @@ import {
   type SettlementPlatform,
 } from "@/modules/intake";
 import { evaluateQuota, periodKeyFor, type Tier } from "@/modules/billing";
-import { MATCHING_DEBOUNCE_MS, PAYMENT_STATUSES, type PaymentStatus } from "@/modules/payments";
+import { PAYMENT_STATUSES, type PaymentStatus } from "@/modules/payments";
 import type { MatchPaymentsInput } from "@/persistence/use-cases/payments-use-cases";
 import type {
   DocumentDirection,
@@ -816,17 +816,17 @@ async function processOcrDocument(
     // document actually has something to match (skips a plain letter, a reminder, ...).
     // `runMatching` re-evaluates the WHOLE workspace, not only this one document, so it also
     // picks up any transaction that was waiting on exactly this invoice.
-    // decisions/0041: debounced, so a bulk upload of hundreds of receipts runs matching once,
-    // shortly after the last document, instead of once per document (each run asks the AI
-    // arbiter about every open transaction).
+    // decisions/0076: due immediately, so the same job runner that processed this document
+    // (the upload route's or the webhook's `after()`) also runs matching; production has no
+    // frequent cron to pick up a later run. At most one queued run per workspace: a bulk upload
+    // adds nothing while one is still waiting, and that one sees every document finished
+    // before it starts.
     if (isInvoiceShaped) {
-      const scheduledAt = (deps.now ?? (() => new Date()))();
-      await repos.jobs.scheduleDebounced({
+      await repos.jobs.scheduleNow({
         kind: JOB_KINDS.matchPayments,
         workspaceId,
         payload: { workspaceId, trigger: "document_done" } satisfies MatchPaymentsInput,
-        runAt: new Date(scheduledAt.getTime() + MATCHING_DEBOUNCE_MS),
-        now: scheduledAt,
+        now: (deps.now ?? (() => new Date()))(),
       });
     }
   });
