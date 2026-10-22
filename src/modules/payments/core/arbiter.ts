@@ -56,6 +56,11 @@ export type PaymentArbiterRawResult = {
 };
 
 export interface PaymentArbiter {
+  /** decisions/0077-arbiter-answer-cache.md: identifies everything about this implementation that
+   * can change its answer to the same input (provider, model, prompt). Part of
+   * `arbiterCacheKey`, so a model or prompt change asks every question again instead of reusing
+   * an answer the new setup never gave. */
+  readonly version: string;
   rank(input: PaymentArbiterInput): Promise<PaymentArbiterRawResult>;
 }
 
@@ -145,25 +150,71 @@ export function hasHardEvidence(tx: MatchableTransaction, doc: MatchableDocument
 /** decisions/0044: how far a foreign-currency document's amount may differ from the debit. */
 const FOREIGN_CURRENCY_TOLERANCE = 0.25;
 
-/** Deterministic cache key for one (transaction, candidate set) pair - F3b's own job to use
- * this as a lookup key before ever calling `PaymentArbiter.rank` again for the same pairing
- * (product decision, F3a brief: avoid repeated calls). Only the fields that could plausibly
- * change the arbiter's own answer are hashed (not the transaction's `id` itself, so the same
- * economic transaction re-imported under a different row id - should that ever happen - still
- * hits the same cache entry); `candidateIds` is sorted first so preselection order never
- * affects the key. */
-export function arbiterCacheKey(
-  tx: Pick<MatchableTransaction, "amountCents" | "bookingDate" | "remittanceText" | "counterpartyName" | "counterpartyIban" | "currency">,
-  candidateIds: readonly string[],
-): string {
+/** decisions/0077-arbiter-answer-cache.md: bumped whenever `arbiterCacheKey`'s own payload
+ * shape changes, so a key computed by older code can never collide with a newer one. */
+const ARBITER_CACHE_KEY_FORMAT = 2;
+
+type CanonicalValue = string | number | boolean | null;
+
+/** Plain code-unit order, the same on every runtime and locale (unlike `localeCompare`). */
+function compareCodeUnits(a: string, b: string): number {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
+/** The object's own primitive fields as `[key, value]` pairs sorted by key, so the hashed form
+ * never depends on property order. A `null` or `undefined` field is left out: an absent
+ * optional field and an explicit `null` both mean "not known" to the arbiter. */
+function canonicalFields(value: object): [string, CanonicalValue][] {
+  return Object.entries(value)
+    .filter((entry): entry is [string, CanonicalValue] => entry[1] !== null && entry[1] !== undefined)
+    .sort(([a], [b]) => compareCodeUnits(a, b));
+}
+
+/**
+ * Deterministic cache key for one arbiter question (decisions/0025's "AI stage caching",
+ * widened by decisions/0077-arbiter-answer-cache.md): the full input `PaymentArbiter.rank`
+ * receives, so the same key means the same question and an answer of any kind (a pick, "no
+ * match", an unusable answer) can be reused instead of asking again. Hashed:
+ * - every field of the transaction, its `id` included (the cache row belongs to that
+ *   transaction);
+ * - every field of every candidate (`openAmountCents` included, so a partial payment booked
+ *   elsewhere, a re-extraction, a kind correction or a contact change asks again), sorted by
+ *   id so the preselection order never changes the key; a candidate added or dropped changes
+ *   the set and so the key;
+ * - `arbiterVersion` (`PaymentArbiter.version`: provider, model, prompt fingerprint).
+ * Hashing every field rather than a hand-picked subset means a field a future prompt starts
+ * showing is covered without touching this function; the price is an occasional extra question
+ * when a field the prompt does not show changes, which is rare.
+ */
+export function arbiterCacheKey(tx: MatchableTransaction, candidates: readonly MatchableDocument[], arbiterVersion: string): string {
+  const sortedCandidates = [...candidates].sort((a, b) => compareCodeUnits(a.id, b.id));
   const payload = JSON.stringify({
-    amountCents: tx.amountCents,
-    bookingDate: tx.bookingDate,
-    remittanceText: tx.remittanceText,
-    counterpartyName: tx.counterpartyName,
-    counterpartyIban: tx.counterpartyIban,
-    currency: tx.currency,
-    candidateIds: [...candidateIds].sort(),
+    format: ARBITER_CACHE_KEY_FORMAT,
+    arbiterVersion,
+    transaction: canonicalFields(tx),
+    candidates: sortedCandidates.map(canonicalFields),
   });
   return createHash("sha256").update(payload).digest("hex");
+}
+
+/** The longest `reason` kept in the answer cache. `validateArbiterResult` only ever shows the
+ * first sentence (at most 300 characters), so nothing it reads is lost. */
+const MAX_CACHED_REASON_LENGTH = 1000;
+
+/**
+ * decisions/0077-arbiter-answer-cache.md: the form an arbiter answer is stored in, so that
+ * re-validating the stored answer later gives exactly the result validating the live one did.
+ * An answer that does not even have the expected shape is stored as "no pick"
+ * (`validateArbiterResult` discards both alike); the confidence is clamped (it is clamped again
+ * on validation, which is idempotent) and the reason shortened to what validation can use.
+ */
+export function toCacheableArbiterAnswer(raw: unknown): PaymentArbiterRawResult {
+  const parsed = arbiterRawResultSchema.safeParse(raw);
+  if (!parsed.success) return { bestDocumentId: null, confidence: 0, reason: "" };
+  return {
+    bestDocumentId: parsed.data.bestDocumentId,
+    confidence: clamp01(parsed.data.confidence),
+    reason: parsed.data.reason.slice(0, MAX_CACHED_REASON_LENGTH),
+  };
 }

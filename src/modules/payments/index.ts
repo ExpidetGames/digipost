@@ -51,6 +51,7 @@ export {
 export {
   MAX_ARBITER_CANDIDATES,
   arbiterCacheKey,
+  toCacheableArbiterAnswer,
   validateArbiterResult,
   type PaymentArbiter,
   type PaymentArbiterInput,

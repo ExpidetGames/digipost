@@ -8,7 +8,8 @@
 // -> one `collective` suggestion covering both, never auto-confirmed; rejecting one leg withdraws
 // the whole collective (without that invoice the sum no longer adds up, decisions/0045 recomputes
 // deterministic suggestions every run) and it is never proposed again; re-running matching a
-// further time changes nothing (idempotent).
+// further time changes nothing (idempotent). decisions/0077: an unchanged arbiter question is
+// never asked twice, also when the answer was "no match"; a new candidate asks once more.
 import { randomUUID } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
@@ -32,6 +33,7 @@ import type { CreateDocumentRow, DocumentDirection, MarkDocumentDoneInput } from
 import { user } from "@/persistence/schema/auth";
 import { jobs } from "@/persistence/schema/jobs";
 import { runDueJobs } from "@/platform/jobs/server";
+import { getPaymentArbiter } from "@/platform/mistral/server";
 
 import { POST } from "@/app/api/documents/route";
 
@@ -140,7 +142,7 @@ function uploadForm(bytes: Buffer, fileName: string, mimeType: string): FormData
 async function createInvoiceDocument(
   workspaceId: string,
   input: { direction: DocumentDirection; invoiceNumber: string | null; totalAmountCents: number },
-) {
+): Promise<string> {
   const documentRepo = createDrizzleDocumentRepository(getDb());
   const created = await documentRepo.create({
     id: randomUUID(),
@@ -371,6 +373,89 @@ describe("payment matching (F3b, real Postgres + MinIO, fake AI)", () => {
       expect(run.processed).toBe(3);
       const matchJobs = await matchPaymentJobs(workspace.id);
       expect(matchJobs.filter((j) => j.status === "done")).toHaveLength(1);
+    },
+    30_000,
+  );
+
+  // decisions/0077-arbiter-answer-cache.md: every trigger runs matching (decisions/0076), and the
+  // six-hour follow-up runs it again (decisions/0039); none of them may send Mistral a question it
+  // already answered, "no match" included.
+  it(
+    "asks the AI arbiter an unchanged question only once, and exactly once more after a new candidate document",
+    async () => {
+      const founder = await createTestUser("arbiter-cache");
+      currentUser = founder;
+      const workspace = await createWorkspaceForUser(founder.id, "Antwortspeicher GmbH");
+      const rank = vi.spyOn(getPaymentArbiter(), "rank");
+      try {
+        const account = await createDrizzleAccountRepository(getDb()).create({
+          workspaceId: workspace.id,
+          type: "bank",
+          name: "Girokonto",
+          iban: null,
+          bic: null,
+          currency: "EUR",
+          holder: null,
+          platform: null,
+        });
+        // A debit no deterministic rule explains (no reference, unknown payee, amount far from
+        // every invoice), so stage 3 asks the arbiter, and the fake arbiter answers "no match".
+        const [debit] = await createDrizzleTransactionRepository(getDb()).insertManyIdempotent([
+          {
+            workspaceId: workspace.id,
+            accountId: account.id,
+            bookingDate: "2026-08-20",
+            valueDate: "2026-08-20",
+            amountCents: -1_000,
+            currency: "EUR",
+            creditDebit: "debit",
+            counterpartyName: "Unbekannt",
+            counterpartyIban: null,
+            counterpartyBic: null,
+            remittanceText: "Lastschrift",
+            endToEndId: null,
+            mandateId: null,
+            creditorId: null,
+            bankTxCode: null,
+            bankReference: null,
+            idempotencyKey: `arbiter-cache-${randomUUID()}`,
+            importBatchId: null,
+            sourceDocumentId: null,
+            raw: null,
+          },
+        ]);
+        if (!debit) throw new Error("expected the debit to be inserted");
+        const firstDocument = await createInvoiceDocument(workspace.id, { direction: "incoming", invoiceNumber: "ER-2026-00500", totalAmountCents: 50_000 });
+
+        const first = await getRequestServices().payments.runMatching({ workspaceId: workspace.id, trigger: "document_done" });
+        expect(first.aiCalls).toBe(1);
+        expect(rank).toHaveBeenCalledTimes(1);
+        expect(first.suggestionsCreated).toBe(0); // "no match"
+
+        // The same question again: by a direct run, and by the queued follow-up run as the job
+        // runner executes it (pulled forward the way a trigger does, decisions/0076).
+        const second = await getRequestServices().payments.runMatching({ workspaceId: workspace.id, trigger: "import_batch" });
+        expect(second.aiCalls).toBe(0);
+        await getRequestServices().payments.scheduleMatching({ workspaceId: workspace.id });
+        const jobRun = await runDueJobs({ workspaceId: workspace.id, limit: 5 });
+        expect(jobRun.processed).toBe(1);
+        expect(rank).toHaveBeenCalledTimes(1);
+
+        // A new candidate document changes the question for this debit: asked exactly once more.
+        const secondDocument = await createInvoiceDocument(workspace.id, { direction: "incoming", invoiceNumber: "ER-2026-00300", totalAmountCents: 30_000 });
+        const third = await getRequestServices().payments.runMatching({ workspaceId: workspace.id, trigger: "document_done" });
+        expect(third.aiCalls).toBe(1);
+        expect(rank).toHaveBeenCalledTimes(2);
+        const lastQuestion = rank.mock.calls[1]![0];
+        expect(lastQuestion.transaction.id).toBe(debit.id);
+        expect(lastQuestion.candidates.map((candidate) => candidate.id).sort()).toEqual([firstDocument, secondDocument].sort());
+
+        const fourth = await getRequestServices().payments.runMatching({ workspaceId: workspace.id, trigger: "cron" });
+        expect(fourth.aiCalls).toBe(0);
+        expect(rank).toHaveBeenCalledTimes(2);
+      } finally {
+        rank.mockRestore();
+      }
     },
     30_000,
   );

@@ -6,12 +6,13 @@
 import type { InferSelectModel } from "drizzle-orm";
 
 import type { DocumentTransactionStatus, MatchedBy, MatchKind, MatchReasonCode } from "@/modules/payments";
-import type { documentTransactions, paymentAliases, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
+import type { documentTransactions, paymentAliases, paymentArbiterAnswers, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
 
 export type DocumentTransactionRow = InferSelectModel<typeof documentTransactions>;
 export type PaymentAliasRow = InferSelectModel<typeof paymentAliases>;
 export type PaymentRejectionRow = InferSelectModel<typeof paymentRejections>;
 export type PaymentNoDocumentRuleRow = InferSelectModel<typeof paymentNoDocumentRules>;
+export type PaymentArbiterAnswerRow = InferSelectModel<typeof paymentArbiterAnswers>;
 
 /** A `document_transactions` row enriched with just enough of its document/transaction to
  * render a suggestion or a matched-transaction line without a second round trip - the
@@ -77,7 +78,8 @@ export interface DocumentTransactionRepository {
   findByPair(workspaceId: string, documentId: string, transactionId: string): Promise<DocumentTransactionRow | null>;
   /** The (at most one, by construction - the arbiter ranks ONE best candidate per
    * transaction) `kind: "ai"` row for this transaction, regardless of `status` - `runMatching`'s
-   * AI-stage cache lookup (`arbiterCacheKey`, see `src/persistence/schema/payments.ts`). */
+   * first AI-stage cache lookup (`arbiterCacheKey`, see `src/persistence/schema/payments.ts`);
+   * `PaymentArbiterAnswerRepository` holds every other answer (decisions/0077). */
   findAiSuggestionForTransaction(workspaceId: string, transactionId: string): Promise<DocumentTransactionRow | null>;
   decide(workspaceId: string, id: string, input: DecideDocumentTransactionInput): Promise<DocumentTransactionRow | null>;
   /** "Verknüpfung aufheben" - deletes the row entirely (not a status change): a future
@@ -129,4 +131,23 @@ export interface PaymentRejectionRepository {
 export interface PaymentNoDocumentRuleRepository {
   upsert(input: { workspaceId: string; counterpartyNameNormalized: string; createdByUserId: string | null }): Promise<PaymentNoDocumentRuleRow>;
   listForWorkspace(workspaceId: string): Promise<PaymentNoDocumentRuleRow[]>;
+}
+
+/** decisions/0077-arbiter-answer-cache.md: the AI arbiter's last answer per transaction, of any
+ * kind, so `runMatching` never asks the same question twice. */
+export interface PaymentArbiterAnswerRepository {
+  /** The stored answer for this transaction (whatever question it answered - the caller
+   * compares `cacheKey`), or `null` when the arbiter was never asked about it. */
+  findForTransaction(workspaceId: string, transactionId: string): Promise<PaymentArbiterAnswerRow | null>;
+  /** Stores the answer to the question `cacheKey` describes, replacing whatever answer this
+   * transaction had before (`payment_arbiter_answers_transaction_key`): an answer to an older
+   * question is never useful again, since its key can only come back with identical inputs. */
+  upsert(input: {
+    workspaceId: string;
+    transactionId: string;
+    cacheKey: string;
+    bestDocumentId: string | null;
+    confidence: number;
+    reason: string;
+  }): Promise<void>;
 }

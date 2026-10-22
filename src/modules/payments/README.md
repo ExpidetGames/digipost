@@ -22,7 +22,15 @@ Maintenance triggers:
 - The platform-detection keyword list or the fee-invoice tolerance changes
 - The app-store payout-pairing window/subset-sum bound changes, or a third platform needs the
   same deterministic pairing (decisions/0048-app-store-reports.md)
-Last verified: 2026-10-22, decisions/0076-match-after-every-trigger.md: a finished
+- `MatchableTransaction`/`MatchableDocument` gain a field that changes often without changing
+  the arbiter's question (it would then be hashed into `arbiterCacheKey` and cost extra
+  questions, decisions/0077-arbiter-answer-cache.md)
+Last verified: 2026-10-22, decisions/0077-arbiter-answer-cache.md: `arbiterCacheKey` now hashes
+the whole arbiter question (every field of the transaction and of each candidate, plus the new
+`PaymentArbiter.version`), and `runMatching` stores every answer, "no match" included, in
+`payment_arbiter_answers` (one row per transaction) and reuses it while the key is unchanged;
+`toCacheableArbiterAnswer` is the stored form. Same day,
+decisions/0076-match-after-every-trigger.md: a finished
 invoice-shaped document and a statement import with new transactions queue `match-payments` due
 now (one queued run per workspace, `JobsRepository.scheduleNow`), so the runner that processed
 the trigger also matches; `MATCHING_DEBOUNCE_MS` (`core/matching-schedule.ts`) is gone.
@@ -186,7 +194,7 @@ remains for F3b.
 - Candidates: `selectCandidateDocuments`, `selectCandidateTransactions`, `MAX_CANDIDATES`,
   `CandidateOptions`.
 - AI arbiter (stage 3): `PaymentArbiter`, `PaymentArbiterInput`, `PaymentArbiterRawResult`,
-  `validateArbiterResult`, `arbiterCacheKey`, `MAX_ARBITER_CANDIDATES`,
+  `validateArbiterResult`, `arbiterCacheKey`, `toCacheableArbiterAnswer`, `MAX_ARBITER_CANDIDATES`,
   `createFakePaymentArbiter`.
 - Learning: `applyAliases`, `learnAliasFromConfirmation`, `filterRejectedPairs`,
   `rejectedPairKey`, `matchesLearnedChannel`, `ContactAliasMap`, `RejectedPairSet`,
@@ -242,7 +250,12 @@ remains for F3b.
   pick whose invoice number contradicts a reference the remittance text explicitly names
   (decisions/0033/G4), or more than `MAX_ARBITER_CANDIDATES` candidates are all
   rejected/thrown, and `autoConfirm` is hardcoded `false` on every AI-stage suggestion.
-  `arbiterCacheKey` for F3b's own repeated-call avoidance.
+  `arbiterCacheKey(tx, candidates, arbiterVersion)` hashes the whole question (every field of
+  the transaction and of each candidate, sorted by id, and `PaymentArbiter.version`) and
+  `toCacheableArbiterAnswer` normalizes a raw answer for storage, so `runMatching` can reuse
+  any earlier answer, "no match" included, without asking again
+  (decisions/0077-arbiter-answer-cache.md). Every `PaymentArbiter` names a `version`
+  (provider, model, prompt fingerprint) for that key.
 - `core/fake-payment-arbiter.ts` - `createFakePaymentArbiter()`: deterministic (no
   randomness, no clock, no network), the same role `@/modules/intake`'s
   `createFakeIntakeClassifier`/`@/modules/documents`'s `createFakeDocumentAnalyzer` play.
@@ -385,9 +398,12 @@ run in progress does not count):
 The job runner started from the same request's `after()` claims it in a later round, after the
 documents already queued, so production never waits for the two-hourly cron. A run that leaves
 anything unresolved queues one follow-up six hours out, unless a run is already queued
-(`hasQueuedPending`, decisions/0039). Cost: every run asks the AI arbiter again about each open
-transaction whose candidates got a "no match" answer before (only a match is cached), so a bulk
-upload processed in several waves pays that once per wave; decisions/0076's "Consequences".
+(`hasQueuedPending`, decisions/0039). Cost: a run asks the AI arbiter only questions it has not
+answered before (decisions/0077-arbiter-answer-cache.md): every answer, "no match" included, is
+kept per transaction in `payment_arbiter_answers` under `arbiterCacheKey`, so a later trigger
+or the six-hour follow-up asks again only for a transaction whose candidate set or one of whose
+inputs changed (a new invoice in its window, a payment booked against a candidate, a
+re-extraction, a model or prompt change).
 
 ## What F3b Added
 
@@ -446,7 +462,9 @@ for it, while the "Re.Nr. 38" auto-confirm case is untouched), `tests/arithmetic
 never-hard-excludes-by-amount, same-contact-first sorting, deterministic tie-breaking, the
 mirrored document/transaction directions), `tests/arbiter.test.ts` (hallucinated id rejection,
 cross-direction rejection, confidence clamping, `autoConfirm` always `false`, the
-candidate-count guard, cache-key determinism, and decisions/0033/G4's exact observed case: a
+candidate-count guard, cache-key derivation (stable for the same question, different for every
+changed transaction or candidate field, a changed candidate set or arbiter version,
+decisions/0077), `toCacheableArbiterAnswer`, and decisions/0033/G4's exact observed case: a
 0.9-confidence pick rejected for naming a contradicting invoice reference),
 `tests/fake-payment-arbiter.test.ts`, `tests/learning.test.ts` (alias learning/application,
 rejected-pair filtering including a collective suggestion, learned payment channels),
@@ -466,7 +484,10 @@ its env-based getter.
 F3b's own orchestration/persistence tests live in `src/persistence/tests/` (this module's
 `core/` stays domain-only, no DB import of its own): `payments-use-cases.test.ts` (`runMatching`
 with fakes - auto-confirm, suggestion-only, alias corroboration, rejection filtering, the AI
-cache-key reuse and the follow-up-job self-reschedule condition; decisions/0033/G4's exact
+cache-key reuse, decisions/0077's answer cache (no second call for an unchanged question, "no
+match" and a discarded pick included, one new call for the transaction that gained a
+candidate, a new call after a field or version change, none stored when the call fails) and the
+follow-up-job self-reschedule condition; decisions/0033/G4's exact
 observed case, a contradicting-invoice-number transaction producing no suggestion at all while
 the correct transaction still auto-confirms; every decision action and its guard rails), plus
 `documents-use-cases.test.ts`/`accounts-use-cases.test.ts`'s own updated assertions for the two
@@ -478,7 +499,12 @@ auto-confirm and go `paid`; a transaction with no invoice-number signal whose am
 open invoices combined -> one `collective` suggestion covering both, never auto-confirmed;
 rejecting one leg is never re-proposed; a further run changes nothing (idempotent). Plus
 (decisions/0076) a statement upload and then an invoice upload each end matched within one
-`runDueJobs` call, and two invoices queued together get one matching run.
+`runDueJobs` call, and two invoices queued together get one matching run. Plus
+(decisions/0077) an unchanged "no match" question is asked once across direct runs and the
+job-run follow-up, and exactly once more after a new candidate document, counted on the fake
+arbiter itself. `src/persistence/tests/payment-arbiter-answers.db.test.ts` (one row per
+transaction, workspace scoping, removal with the transaction) and
+`workspaces-repository.db.test.ts`'s cascade case cover `payment_arbiter_answers` in Postgres.
 `tests/e2e/payments.spec.ts` (`@smoke`): an admin uploads an invoice and a matching camt.053
 statement, waits for the app's own `after()` runner to finish matching (never triggering a job
 itself, `tests/e2e/helpers/jobs.ts`'s `waitForPaymentMatching`), confirms the resulting

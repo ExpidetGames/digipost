@@ -21,11 +21,14 @@ Maintenance triggers:
   added
 - F4 (platform settlement payouts) lands and starts writing to `transactions.transfer_group_id`
   or reusing `core/settlement.ts`
-Last verified: 2026-10-21, "A transaction is never allocated past its amount" added below.
+Last verified: 2026-10-22, status note: decision 6 refined by decisions/0077-arbiter-answer-cache.md.
+Previously 2026-10-21, "A transaction is never allocated past its amount" added below.
 Previously 2026-09-20, F3b (payment matching wiring)
 
 ## Status
-Accepted
+Accepted. Decision 6's cache (what the key covers, and that only a positive answer was kept) is
+refined by decisions/0077-arbiter-answer-cache.md: the key now covers the whole question and every
+answer, "no match" included, is kept in `payment_arbiter_answers`.
 
 ## Context
 

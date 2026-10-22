@@ -13,6 +13,7 @@ import { createFakeDocumentRepository, documentRow } from "@/persistence/tests/s
 import {
   createFakeDocumentTransactionRepository,
   createFakePaymentAliasRepository,
+  createFakePaymentArbiterAnswerRepository,
   createFakePaymentNoDocumentRuleRepository,
   createFakePaymentRejectionRepository,
   isConfirmedPredicate,
@@ -38,6 +39,7 @@ function setup(options: { arbiter?: PaymentArbiter; now?: Date; autoConfirm?: Pa
   const { repo: paymentAlias, state: paymentAliasState } = createFakePaymentAliasRepository();
   const { repo: paymentRejection, state: paymentRejectionState } = createFakePaymentRejectionRepository();
   const { repo: paymentNoDocumentRule } = createFakePaymentNoDocumentRuleRepository();
+  const { repo: paymentArbiterAnswer, state: paymentArbiterAnswerState } = createFakePaymentArbiterAnswerRepository();
   const { repo: jobs, state: jobState } = createFakeJobsRepository();
   // decisions/0068-supplier-clearing-accounts.md: every matching run asks which contacts are
   // settled through a clearing account of their own, so this repository is no longer optional
@@ -55,6 +57,7 @@ function setup(options: { arbiter?: PaymentArbiter; now?: Date; autoConfirm?: Pa
     paymentAlias,
     paymentRejection,
     paymentNoDocumentRule,
+    paymentArbiterAnswer,
     jobs,
   });
   const uow: UnitOfWork = { transaction: (work) => work(repos) };
@@ -76,6 +79,7 @@ function setup(options: { arbiter?: PaymentArbiter; now?: Date; autoConfirm?: Pa
     transactionState,
     paymentAliasState,
     paymentRejectionState,
+    paymentArbiterAnswerState,
     jobState,
   };
 }
@@ -258,6 +262,7 @@ describe("createPaymentsUseCases.runMatching", () => {
   it("caches an AI-stage answer and never calls the arbiter twice for the same (transaction, candidate set) pairing", async () => {
     let calls = 0;
     const fakeArbiter: PaymentArbiter = {
+      version: "test:1",
       async rank(input: PaymentArbiterInput): Promise<PaymentArbiterRawResult> {
         calls++;
         const first = input.candidates[0];
@@ -287,6 +292,159 @@ describe("createPaymentsUseCases.runMatching", () => {
     expect(second.aiCalls).toBe(0); // identical candidate set - the cached suggestion is reused
     expect(calls).toBe(1);
     expect(s.documentTransactionState.filter((r) => r.kind === "ai")).toHaveLength(1);
+  });
+
+  describe("the arbiter answer cache (decisions/0077-arbiter-answer-cache.md)", () => {
+    /** Counts calls; answers with `answer(input)` (default: "no match"). */
+    function countingArbiter(answer: (input: PaymentArbiterInput) => PaymentArbiterRawResult = () => ({ bestDocumentId: null, confidence: 0, reason: "Keine passt." }), version = "test:1") {
+      const calls: PaymentArbiterInput[] = [];
+      const arbiter: PaymentArbiter = {
+        version,
+        async rank(input) {
+          calls.push(input);
+          return answer(input);
+        },
+      };
+      return { arbiter, calls };
+    }
+
+    function openInvoice(id: string, totalAmountCents: number) {
+      return documentRow({
+        id,
+        workspaceId: WORKSPACE,
+        storageKey: `workspaces/w1/documents/${id}/original.pdf`,
+        direction: "incoming",
+        invoiceNumber: `RE-${id}`,
+        totalAmountCents,
+        paymentStatus: "open",
+      });
+    }
+
+    // A debit no stage 1/2 rule explains (no signal, amount far off), so stage 3 is asked.
+    function unexplainedDebit(id: string) {
+      return transactionRow({ id, workspaceId: WORKSPACE, accountId: "a1", idempotencyKey: id, amountCents: -1_000, remittanceText: "Lastschrift", counterpartyName: "Unbekannt" });
+    }
+
+    it("asks once and never again while the question is unchanged, also when the answer was no match", async () => {
+      const { arbiter, calls } = countingArbiter();
+      const s = setup({ arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 50_000));
+      s.transactionState.push(unexplainedDebit("t1"), unexplainedDebit("t2"));
+
+      const first = await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+      const second = await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "import_batch" });
+      // decisions/0039's six-hour follow-up is an ordinary run with `trigger: "cron"`.
+      const followUp = await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "cron" });
+
+      expect(first.aiCalls).toBe(2);
+      expect(second.aiCalls).toBe(0);
+      expect(followUp.aiCalls).toBe(0);
+      expect(calls).toHaveLength(2);
+      expect(s.paymentArbiterAnswerState).toHaveLength(2);
+      expect(s.paymentArbiterAnswerState[0]).toMatchObject({ workspaceId: WORKSPACE, bestDocumentId: null });
+      expect(s.documentTransactionState).toHaveLength(0);
+    });
+
+    it("asks again, once, only for the transaction whose candidate set gained a document", async () => {
+      const { arbiter, calls } = countingArbiter();
+      const s = setup({ arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 50_000));
+      s.transactionState.push(unexplainedDebit("t1"));
+      // An incoming payment: an incoming invoice is never its candidate, so it is not affected.
+      s.transactionState.push(transactionRow({ id: "t-credit", workspaceId: WORKSPACE, accountId: "a1", idempotencyKey: "t-credit", amountCents: 2_000, remittanceText: "Gutschrift" }));
+      s.documentState.push(documentRow({ id: "d-out", workspaceId: WORKSPACE, storageKey: "workspaces/w1/documents/d-out/original.pdf", direction: "outgoing", invoiceNumber: "AR-1", totalAmountCents: 90_000, paymentStatus: "open" }));
+
+      expect((await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" })).aiCalls).toBe(2);
+
+      s.documentState.push(openInvoice("d2", 30_000));
+      const afterNewDocument = await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+
+      expect(afterNewDocument.aiCalls).toBe(1);
+      expect(calls).toHaveLength(3);
+      expect(calls[2]!.transaction.id).toBe("t1");
+      expect(calls[2]!.candidates.map((c) => c.id).sort()).toEqual(["d1", "d2"]);
+      // One row per transaction: the new answer replaced the old one.
+      expect(s.paymentArbiterAnswerState.filter((r) => r.transactionId === "t1")).toHaveLength(1);
+      expect((await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "cron" })).aiCalls).toBe(0);
+    });
+
+    it("asks again when a candidate's fields change (a re-extracted amount)", async () => {
+      const { arbiter } = countingArbiter();
+      const s = setup({ arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 50_000));
+      s.transactionState.push(unexplainedDebit("t1"));
+      await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+
+      s.documentState[0]!.totalAmountCents = 40_000;
+      expect((await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" })).aiCalls).toBe(1);
+    });
+
+    it("asks again when the arbiter's model or prompt version changes", async () => {
+      const s = setup({ arbiter: countingArbiter().arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 50_000));
+      s.transactionState.push(unexplainedDebit("t1"));
+      await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+
+      // The same stored answers, read by use cases bound to a newer arbiter.
+      const { arbiter: newer, calls } = countingArbiter(undefined, "test:2");
+      const s2 = setup({ arbiter: newer, autoConfirm: "none" });
+      s2.documentState.push(...s.documentState);
+      s2.transactionState.push(...s.transactionState);
+      s2.paymentArbiterAnswerState.push(...s.paymentArbiterAnswerState);
+      expect((await s2.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "cron" })).aiCalls).toBe(1);
+      expect(calls).toHaveLength(1);
+    });
+
+    it("keeps a pick that fails the code checks, and re-validates it without asking", async () => {
+      // The arbiter picks the only candidate, but the amount is far off and nothing else links
+      // them: decisions/0039's hard-evidence gate discards it, now and on every reuse.
+      const { arbiter, calls } = countingArbiter((input) => ({ bestDocumentId: input.candidates[0]!.id, confidence: 0.9, reason: "Vielleicht." }));
+      const s = setup({ arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 50_000));
+      s.transactionState.push(unexplainedDebit("t1"));
+
+      await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+      await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "cron" });
+
+      expect(calls).toHaveLength(1);
+      expect(s.paymentArbiterAnswerState[0]).toMatchObject({ bestDocumentId: "d1", confidence: 0.9 });
+      expect(s.documentTransactionState).toHaveLength(0);
+    });
+
+    it("rebuilds a removed AI suggestion from the stored answer instead of asking again", async () => {
+      const { arbiter, calls } = countingArbiter((input) => ({ bestDocumentId: input.candidates[0]!.id, confidence: 0.7, reason: "Betrag passt." }));
+      const s = setup({ arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 7_500));
+      s.transactionState.push(transactionRow({ id: "t1", workspaceId: WORKSPACE, accountId: "a1", idempotencyKey: "t1", amountCents: -7_500, remittanceText: "Danke" }));
+
+      await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+      expect(s.documentTransactionState.filter((r) => r.kind === "ai")).toHaveLength(1);
+      s.documentTransactionState.splice(0); // e.g. withdrawn by a later rule (decisions/0045)
+
+      const again = await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "cron" });
+      expect(again.aiCalls).toBe(0);
+      expect(calls).toHaveLength(1);
+      expect(s.documentTransactionState.filter((r) => r.kind === "ai")).toHaveLength(1);
+    });
+
+    it("does not store anything when the arbiter fails, so the retry asks again", async () => {
+      let fail = true;
+      const arbiter: PaymentArbiter = {
+        version: "test:1",
+        async rank() {
+          if (fail) throw new Error("rate limited");
+          return { bestDocumentId: null, confidence: 0, reason: "Keine passt." };
+        },
+      };
+      const s = setup({ arbiter, autoConfirm: "none" });
+      s.documentState.push(openInvoice("d1", 50_000));
+      s.transactionState.push(unexplainedDebit("t1"));
+
+      await expect(s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" })).rejects.toThrow("rate limited");
+      expect(s.paymentArbiterAnswerState).toHaveLength(0);
+      fail = false;
+      expect((await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" })).aiCalls).toBe(1);
+    });
   });
 
   // decisions/0033-contradicting-invoice-number-vetoes-a-match.md: the exact observed

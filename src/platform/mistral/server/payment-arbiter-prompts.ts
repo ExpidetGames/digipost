@@ -6,6 +6,8 @@
 // asked to invent a document id of its own - `@/modules/payments`'s `validateArbiterResult`
 // still rejects a hallucinated id regardless (the "AI proposes, code verifies" contract), but
 // the prompt itself is written to make that outcome unlikely in the first place.
+import { createHash } from "node:crypto";
+
 import type { MatchableDocument, MatchableTransaction } from "@/modules/payments";
 
 import { describeGuardedSection, wrapUntrustedSection } from "./prompt-guard";
@@ -42,13 +44,84 @@ function formatCandidate(candidate: MatchableDocument): string {
   return parts.join(", ");
 }
 
-export function buildPaymentArbiterUserPrompt(input: { transaction: MatchableTransaction; candidates: readonly MatchableDocument[] }): string {
+/** The user prompt's content before `wrapUntrustedSection` adds its per-call random delimiters. */
+function buildPaymentArbiterUserPromptBody(input: { transaction: MatchableTransaction; candidates: readonly MatchableDocument[] }): string {
   const tx = input.transaction;
-  const body = [
+  return [
     `Zahlung: Betrag ${(tx.amountCents / 100).toFixed(2)} ${tx.currency}, Datum ${tx.bookingDate}, Gegenpartei ${tx.counterpartyName ?? "unbekannt"}, Verwendungszweck: ${tx.remittanceText ?? "(leer)"}`,
     "Kandidaten:",
     ...input.candidates.map((candidate, index) => `${index + 1}. ${formatCandidate(candidate)}`),
   ].join("\n");
+}
 
-  return wrapUntrustedSection(INPUT_LABEL, body);
+export function buildPaymentArbiterUserPrompt(input: { transaction: MatchableTransaction; candidates: readonly MatchableDocument[] }): string {
+  return wrapUntrustedSection(INPUT_LABEL, buildPaymentArbiterUserPromptBody(input));
+}
+
+/** Two fixed sample questions, one with every field known and one with every optional field
+ * missing, rendered by `paymentArbiterPromptFingerprint` below. Never sent anywhere. */
+const FINGERPRINT_SAMPLES: readonly { transaction: MatchableTransaction; candidates: readonly MatchableDocument[] }[] = [
+  {
+    transaction: {
+      id: "tx",
+      bookingDate: "2026-01-15",
+      amountCents: -12_345,
+      currency: "EUR",
+      counterpartyName: "Muster GmbH",
+      counterpartyIban: "DE02120300000000202051",
+      remittanceText: "RE-1",
+      endToEndId: "E2E",
+      accountId: "account",
+    },
+    candidates: [
+      {
+        id: "doc",
+        direction: "incoming",
+        invoiceNumber: "RE-1",
+        totalAmountCents: 12_345,
+        currency: "EUR",
+        documentDate: "2026-01-01",
+        dueDate: "2026-01-14",
+        paymentIban: "DE02120300000000202051",
+        contactId: "contact",
+        contactIban: "DE02120300000000202051",
+        contactName: "Muster GmbH",
+        openAmountCents: 12_345,
+        referenceText: "Rechnung RE-1",
+      },
+    ],
+  },
+  {
+    transaction: { id: "tx", bookingDate: "2026-01-15", amountCents: 100, currency: "EUR", counterpartyName: null, counterpartyIban: null, remittanceText: null, endToEndId: null, accountId: "account" },
+    candidates: [
+      {
+        id: "doc",
+        direction: "outgoing",
+        invoiceNumber: null,
+        totalAmountCents: 100,
+        currency: "EUR",
+        documentDate: null,
+        dueDate: null,
+        paymentIban: null,
+        contactId: null,
+        contactIban: null,
+        contactName: null,
+        openAmountCents: 100,
+      },
+    ],
+  },
+];
+
+/**
+ * decisions/0077-arbiter-answer-cache.md: a short hash of the system prompt and of how the user
+ * prompt renders the fixed samples above (its body, without the random delimiters of
+ * `wrapUntrustedSection`, which differ on every call). It is part of `PaymentArbiter.version` and so of every
+ * answer-cache key: any edit to the prompt text or its formatting changes it, and every question
+ * is asked once more under the new prompt, without anyone having to remember a manual version
+ * bump.
+ */
+export function paymentArbiterPromptFingerprint(): string {
+  const hash = createHash("sha256").update(buildPaymentArbiterSystemPrompt());
+  for (const sample of FINGERPRINT_SAMPLES) hash.update("\u0000").update(buildPaymentArbiterUserPromptBody(sample));
+  return hash.digest("hex").slice(0, 16);
 }

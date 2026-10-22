@@ -25,6 +25,7 @@ import type { MailIntakeRepository } from "./mail-intake-repository";
 import type {
   DocumentTransactionRepository,
   PaymentAliasRepository,
+  PaymentArbiterAnswerRepository,
   PaymentNoDocumentRuleRepository,
   PaymentRejectionRepository,
 } from "./payments-repository";
@@ -141,6 +142,8 @@ export type {
   DocumentTransactionWithDetails,
   PaymentAliasRepository,
   PaymentAliasRow,
+  PaymentArbiterAnswerRepository,
+  PaymentArbiterAnswerRow,
   PaymentNoDocumentRuleRepository,
   PaymentNoDocumentRuleRow,
   PaymentRejectionRepository,
@@ -167,6 +170,8 @@ export type Repositories = {
   paymentAlias: PaymentAliasRepository;
   paymentRejection: PaymentRejectionRepository;
   paymentNoDocumentRule: PaymentNoDocumentRuleRepository;
+  /** decisions/0077-arbiter-answer-cache.md, owner `src/modules/payments`. */
+  paymentArbiterAnswer: PaymentArbiterAnswerRepository;
   /** decisions/0075-email-intake.md, owner `src/modules/mail-intake`. */
   mailIntake: MailIntakeRepository;
   // … one entry per repository

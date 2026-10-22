@@ -25,7 +25,9 @@ Last verified: 2026-10-22, against `src/persistence/use-cases/jobs-use-cases.ts`
 
 Accepted. Supersedes the debounce of decisions/0041-debounced-matching.md (its 15-minute job
 lease still holds) and refines decisions/0039-matching-hardening-after-first-real-upload.md's
-fourth point ("at most one scheduled follow-up").
+fourth point ("at most one scheduled follow-up"). The "no match" cost in "Consequences" below is
+resolved by decisions/0077-arbiter-answer-cache.md (2026-10-22): every answer is kept, so a run
+asks only questions that changed.
 
 ## Context
 

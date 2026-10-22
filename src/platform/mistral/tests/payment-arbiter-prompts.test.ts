@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MatchableDocument, MatchableTransaction } from "@/modules/payments";
 
-import { buildPaymentArbiterSystemPrompt, buildPaymentArbiterUserPrompt } from "../server/payment-arbiter-prompts";
+import { buildPaymentArbiterSystemPrompt, buildPaymentArbiterUserPrompt, paymentArbiterPromptFingerprint } from "../server/payment-arbiter-prompts";
 
 function tx(overrides: Partial<MatchableTransaction> = {}): MatchableTransaction {
   return {
@@ -95,5 +95,12 @@ describe("buildPaymentArbiterUserPrompt", () => {
     const prompt = buildPaymentArbiterUserPrompt({ transaction: tx(), candidates: [doc({ invoiceNumber: null, dueDate: null })] });
     expect(prompt).toContain("Rechnungsnummer: unbekannt");
     expect(prompt).toContain("Fälligkeitsdatum: unbekannt");
+  });
+});
+
+describe("paymentArbiterPromptFingerprint (decisions/0077-arbiter-answer-cache.md)", () => {
+  it("is a stable short hex string, independent of the per-call random delimiters", () => {
+    expect(paymentArbiterPromptFingerprint()).toMatch(/^[0-9a-f]{16}$/);
+    expect(paymentArbiterPromptFingerprint()).toBe(paymentArbiterPromptFingerprint());
   });
 });

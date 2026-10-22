@@ -24,7 +24,7 @@ import { documents } from "@/persistence/schema/documents";
 import { intakeSourceFingerprints } from "@/persistence/schema/intake-fingerprints";
 import { jobs } from "@/persistence/schema/jobs";
 import { inboundEmails, mailIntakeAllowedSenders, mailIntakeSettings } from "@/persistence/schema/mail-intake";
-import { documentTransactions, paymentAliases, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
+import { documentTransactions, paymentAliases, paymentArbiterAnswers, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
 import { workspaceInvitations, workspaceMembers } from "@/persistence/schema/workspaces";
 
 const db = getDb();
@@ -518,6 +518,8 @@ describe("createDrizzleWorkspaceRepository.delete (F5, decisions/0027-hardening-
     });
     await db.insert(paymentRejections).values({ workspaceId: workspace.id, documentId: document.id, transactionId: transaction.id });
     await db.insert(paymentNoDocumentRules).values({ workspaceId: workspace.id, counterpartyNameNormalized: "interne buchung" });
+    // decisions/0077-arbiter-answer-cache.md: the AI arbiter's cached answer.
+    await db.insert(paymentArbiterAnswers).values({ workspaceId: workspace.id, transactionId: transaction.id, cacheKey: "cascade", bestDocumentId: null, confidence: 0, reason: "Keine passt." });
 
     await db.insert(jobs).values({ kind: "process-document", workspaceId: workspace.id, payload: { documentId: document.id } });
     await db.insert(workspaceMonthlyUsage).values({ workspaceId: workspace.id, period: "2026-01-01", documentsCreated: 1 });
@@ -572,6 +574,7 @@ describe("createDrizzleWorkspaceRepository.delete (F5, decisions/0027-hardening-
     expect(await db.select().from(paymentAliases).where(eq(paymentAliases.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(paymentRejections).where(eq(paymentRejections.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(paymentNoDocumentRules).where(eq(paymentNoDocumentRules.workspaceId, workspace.id))).toHaveLength(0);
+    expect(await db.select().from(paymentArbiterAnswers).where(eq(paymentArbiterAnswers.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(jobs).where(eq(jobs.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(workspaceMonthlyUsage).where(eq(workspaceMonthlyUsage.workspaceId, workspace.id))).toHaveLength(0);
     expect(await db.select().from(quotaPackagePurchases).where(eq(quotaPackagePurchases.workspaceId, workspace.id))).toHaveLength(0);

@@ -17,7 +17,7 @@ import { MAX_ARBITER_CANDIDATES } from "@/modules/payments";
 import { MISTRAL_ERROR_CODES, MistralRequestError } from "../core/errors";
 import { mistralChatResponseSchema } from "../core/schemas";
 import { mistralFetch, type MistralFetchConfig } from "./mistral-fetch";
-import { buildPaymentArbiterSystemPrompt, buildPaymentArbiterUserPrompt } from "./payment-arbiter-prompts";
+import { buildPaymentArbiterSystemPrompt, buildPaymentArbiterUserPrompt, paymentArbiterPromptFingerprint } from "./payment-arbiter-prompts";
 
 export type MistralPaymentArbiterConfig = MistralFetchConfig & { model: string };
 
@@ -30,6 +30,9 @@ export type MistralPaymentArbiterConfig = MistralFetchConfig & { model: string }
  */
 export function createMistralPaymentArbiter(config: MistralPaymentArbiterConfig): PaymentArbiter {
   return {
+    // decisions/0077-arbiter-answer-cache.md: a different model or prompt asks every cached
+    // question again.
+    version: `mistral:${config.model}:${paymentArbiterPromptFingerprint()}`,
     async rank(input: { transaction: MatchableTransaction; candidates: readonly MatchableDocument[] }): Promise<PaymentArbiterRawResult> {
       if (input.candidates.length > MAX_ARBITER_CANDIDATES) {
         throw new Error(`Payment arbiter called with ${input.candidates.length} candidates, more than the max of ${MAX_ARBITER_CANDIDATES}`);
