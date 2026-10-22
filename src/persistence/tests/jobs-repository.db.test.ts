@@ -183,4 +183,119 @@ describe("createDrizzleJobsRepository", () => {
     expect(found?.lastErrorCode).toBe("ai_rate_limited");
     expect(found?.runAt.getTime()).toBe(newRunAt.getTime());
   });
+
+  // decisions/0076: matching triggers make a run due now, at most one queued run per workspace.
+  describe("scheduleNow / hasQueuedPending / release", () => {
+    const MATCH = "match-payments";
+
+    async function matchJobs(workspaceId: string) {
+      return db.select().from(jobs).where(eq(jobs.workspaceId, workspaceId)).orderBy(jobs.createdAt);
+    }
+
+    it("enqueues a job due now when none is queued", async () => {
+      const workspace = await createTestWorkspace("Jobs Co L");
+      const repo = createDrizzleJobsRepository(db);
+      const now = new Date();
+
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: { workspaceId: workspace.id }, now });
+
+      const rows = await matchJobs(workspace.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ kind: MATCH, status: "pending", attempts: 0, lockedUntil: null });
+      expect(rows[0]!.runAt.getTime()).toBe(now.getTime());
+    });
+
+    it("adds nothing while a run is queued and due, and keeps its earlier run_at", async () => {
+      const workspace = await createTestWorkspace("Jobs Co M");
+      const repo = createDrizzleJobsRepository(db);
+      const first = new Date(Date.now() - 10_000);
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: {}, now: first });
+
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: {}, now: new Date() });
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: {}, now: new Date() });
+
+      const rows = await matchJobs(workspace.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.runAt.getTime()).toBe(first.getTime());
+    });
+
+    it("pulls a queued six-hour follow-up forward to now instead of adding a second run", async () => {
+      const workspace = await createTestWorkspace("Jobs Co N");
+      const repo = createDrizzleJobsRepository(db);
+      const now = new Date();
+      await repo.enqueue({ kind: MATCH, payload: { trigger: "cron" }, workspaceId: workspace.id, runAt: new Date(now.getTime() + 6 * 3_600_000) });
+      expect(await repo.hasQueuedPending({ kind: MATCH, workspaceId: workspace.id, now })).toBe(true);
+
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: { trigger: "document_done" }, now });
+
+      const rows = await matchJobs(workspace.id);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.runAt.getTime()).toBe(now.getTime());
+      const claimed = await db.transaction((tx) => createDrizzleJobsRepository(tx).claimDue({ limit: 5, workspaceId: workspace.id, now: new Date(now.getTime() + 1), leaseMs: 60_000 }));
+      expect(claimed.map((j) => j.id)).toEqual([rows[0]!.id]);
+    });
+
+    it("ignores a run that is in progress (leased) and queues a new one, which hasQueuedPending then reports", async () => {
+      const workspace = await createTestWorkspace("Jobs Co O");
+      const repo = createDrizzleJobsRepository(db);
+      const running = await repo.enqueue({ kind: MATCH, payload: {}, workspaceId: workspace.id });
+      const now = new Date();
+      await db.transaction((tx) => createDrizzleJobsRepository(tx).claimDue({ limit: 1, workspaceId: workspace.id, now, leaseMs: 60_000 }));
+      // The running job itself is not "queued": a follow-up check from inside it sees nothing.
+      expect(await repo.hasQueuedPending({ kind: MATCH, workspaceId: workspace.id, now })).toBe(false);
+
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: {}, now });
+
+      const rows = await matchJobs(workspace.id);
+      expect(rows).toHaveLength(2);
+      const fresh = rows.find((r) => r.id !== running.id)!;
+      expect(fresh).toMatchObject({ status: "pending", lockedUntil: null });
+      expect(fresh.runAt.getTime()).toBe(now.getTime());
+      expect(await repo.hasQueuedPending({ kind: MATCH, workspaceId: workspace.id, now })).toBe(true);
+    });
+
+    it("counts only jobs of the given kind and workspace, never done ones", async () => {
+      const workspace = await createTestWorkspace("Jobs Co P");
+      const other = await createTestWorkspace("Jobs Co P2");
+      const repo = createDrizzleJobsRepository(db);
+      const now = new Date();
+      await repo.enqueue({ kind: "process-document", payload: {}, workspaceId: workspace.id });
+      await repo.enqueue({ kind: MATCH, payload: {}, workspaceId: other.id });
+      const done = await repo.enqueue({ kind: MATCH, payload: {}, workspaceId: workspace.id });
+      await repo.markSucceeded(done.id, now);
+
+      expect(await repo.hasQueuedPending({ kind: MATCH, workspaceId: workspace.id, now })).toBe(false);
+
+      await repo.scheduleNow({ kind: MATCH, workspaceId: workspace.id, payload: {}, now });
+      expect((await matchJobs(workspace.id)).filter((r) => r.kind === MATCH && r.status === "pending")).toHaveLength(1);
+      expect((await matchJobs(other.id))).toHaveLength(1);
+    });
+
+    it("release clears the lease and gives back the attempt claimDue counted", async () => {
+      const workspace = await createTestWorkspace("Jobs Co Q");
+      const repo = createDrizzleJobsRepository(db);
+      const created = await repo.enqueue({ kind: "process-document", payload: {}, workspaceId: workspace.id });
+      const now = new Date();
+      await db.transaction((tx) => createDrizzleJobsRepository(tx).claimDue({ limit: 1, workspaceId: workspace.id, now, leaseMs: 60_000 }));
+
+      await repo.release([created.id], now);
+
+      const found = await repo.findById(created.id);
+      expect(found).toMatchObject({ status: "pending", lockedUntil: null, attempts: 0 });
+      const reclaimed = await db.transaction((tx) => createDrizzleJobsRepository(tx).claimDue({ limit: 1, workspaceId: workspace.id, now, leaseMs: 60_000 }));
+      expect(reclaimed.map((j) => j.id)).toEqual([created.id]);
+    });
+
+    it("claimDue breaks a run_at tie by creation order", async () => {
+      const workspace = await createTestWorkspace("Jobs Co R");
+      const repo = createDrizzleJobsRepository(db);
+      const runAt = new Date(Date.now() - 1_000);
+      const first = await repo.enqueue({ kind: "process-document", payload: { n: 1 }, workspaceId: workspace.id, runAt });
+      const second = await repo.enqueue({ kind: MATCH, payload: { n: 2 }, workspaceId: workspace.id, runAt });
+
+      const claimed = await db.transaction((tx) => createDrizzleJobsRepository(tx).claimDue({ limit: 5, workspaceId: workspace.id, now: new Date(), leaseMs: 60_000 }));
+
+      expect(claimed.map((j) => j.id)).toEqual([first.id, second.id]);
+    });
+  });
 });

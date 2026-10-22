@@ -23,21 +23,39 @@ export function jobRow(overrides: Partial<JobRow> & Pick<JobRow, "kind">): JobRo
   };
 }
 
+/** Pending and not currently leased: the predicate `hasQueuedPending`/`scheduleNow` share with
+ * the real repository. */
+function isQueued(row: JobRow, kind: string, workspaceId: string, now: Date): boolean {
+  return row.kind === kind && row.workspaceId === workspaceId && row.status === "pending" && (!row.lockedUntil || row.lockedUntil.getTime() < now.getTime());
+}
+
 export function createFakeJobsRepository(seed: JobRow[] = []): { repo: JobsRepository; state: JobRow[] } {
   const rows = [...seed];
 
   const repo: JobsRepository = {
-    async hasScheduledPending({ kind, workspaceId, now }: { kind: string; workspaceId: string; now: Date }) {
-      return rows.some((r) => r.kind === kind && r.workspaceId === workspaceId && r.status === "pending" && r.runAt.getTime() > now.getTime());
+    async hasQueuedPending({ kind, workspaceId, now }: { kind: string; workspaceId: string; now: Date }) {
+      return rows.some((r) => isQueued(r, kind, workspaceId, now));
     },
 
-    async scheduleDebounced({ kind, workspaceId, payload, runAt, now }: { kind: string; workspaceId: string; payload: unknown; runAt: Date; now: Date }) {
-      const scheduled = rows.filter((r) => r.kind === kind && r.workspaceId === workspaceId && r.status === "pending" && r.runAt.getTime() > now.getTime());
-      if (scheduled.length > 0) {
-        for (const row of scheduled) row.runAt = runAt;
+    async scheduleNow({ kind, workspaceId, payload, now }: { kind: string; workspaceId: string; payload: unknown; now: Date }) {
+      const queued = rows.filter((r) => isQueued(r, kind, workspaceId, now));
+      if (queued.length > 0) {
+        for (const row of queued) {
+          if (row.runAt.getTime() > now.getTime()) row.runAt = now;
+          row.updatedAt = now;
+        }
         return;
       }
-      rows.push(jobRow({ kind, payload: payload as JobRow["payload"], workspaceId, runAt, maxAttempts: 5 }));
+      rows.push(jobRow({ kind, payload: payload as JobRow["payload"], workspaceId, runAt: now, maxAttempts: 5, createdAt: now, updatedAt: now }));
+    },
+
+    async release(ids: string[], now: Date) {
+      for (const row of rows) {
+        if (!ids.includes(row.id) || row.status !== "pending") continue;
+        row.lockedUntil = null;
+        row.attempts = Math.max(0, row.attempts - 1);
+        row.updatedAt = now;
+      }
     },
 
     async enqueue(input: EnqueueJobInput) {
@@ -61,7 +79,7 @@ export function createFakeJobsRepository(seed: JobRow[] = []): { repo: JobsRepos
             (!r.lockedUntil || r.lockedUntil.getTime() < now.getTime()) &&
             (!workspaceId || r.workspaceId === workspaceId),
         )
-        .sort((a, b) => a.runAt.getTime() - b.runAt.getTime());
+        .sort((a, b) => a.runAt.getTime() - b.runAt.getTime() || a.createdAt.getTime() - b.createdAt.getTime());
 
       const claimed = due.slice(0, limit);
       const lockedUntil = new Date(now.getTime() + leaseMs);

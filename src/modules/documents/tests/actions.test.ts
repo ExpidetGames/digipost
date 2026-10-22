@@ -38,6 +38,7 @@ vi.mock("@/persistence/composition/request-services", () => ({
 }));
 
 import { PERMISSIONS } from "@/platform/access";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
 import { requirePermission } from "@/platform/access/server";
 import { UseCaseError } from "@/persistence/use-cases/errors";
 import { DOCUMENT_ERROR, MappingValidationError } from "@/persistence/use-cases/documents-use-cases";
@@ -128,7 +129,7 @@ describe("retryProcessingAction", () => {
     expect(afterMock).toHaveBeenCalledTimes(1);
     // The callback passed to `after()` calls `runDueJobs` for the caller's own workspace.
     await afterMock.mock.calls[0]![0]();
-    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5 });
+    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS });
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
     expect(revalidatePathMock).toHaveBeenCalledWith(`/dashboard/documents/${DOC_ID}`);
   });
@@ -188,7 +189,7 @@ describe("reclassifyDocumentAction", () => {
     expect(paymentsUseCases.discardOpenSuggestionsForDocument).toHaveBeenCalledWith({ workspaceId: "w1", documentId: DOC_ID });
     expect(afterMock).toHaveBeenCalledTimes(1);
     await afterMock.mock.calls[0]![0]();
-    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5 });
+    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS });
     expect(revalidatePathMock).toHaveBeenCalledWith("/dashboard");
     expect(revalidatePathMock).toHaveBeenCalledWith(`/dashboard/documents/${DOC_ID}`);
   });
@@ -223,7 +224,7 @@ describe("kickProcessingAction", () => {
 
     expect(afterMock).toHaveBeenCalledTimes(1);
     await afterMock.mock.calls[0]![0]();
-    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 10 });
+    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 10, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS });
   });
 
   it("defaults the limit when called with no input", async () => {
@@ -232,7 +233,7 @@ describe("kickProcessingAction", () => {
     await kickProcessingAction();
 
     await afterMock.mock.calls[0]![0]();
-    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5 });
+    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS });
   });
 });
 

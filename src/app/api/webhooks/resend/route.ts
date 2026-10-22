@@ -27,12 +27,15 @@ import { after } from "next/server";
 import { createApiHandlerFromContract, defineApiEndpointContract } from "@/platform/api-pipeline";
 import { parseWebhookEvent, WebhookSignatureError, type ParsedWebhookEvent } from "@/platform/inbound-mail";
 import { isInboundMailWebhookConfigured, verifyInboundWebhook } from "@/platform/inbound-mail/server";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
 import { runDueJobs } from "@/platform/jobs/server";
 import { getRequestServices } from "@/persistence/composition/request-services";
 
-// Storing the log row is fast; the generous headroom is for the `after()` job run, which
-// downloads attachments and creates documents within this same invocation.
-export const maxDuration = 60;
+// Storing the log row is fast; the headroom is for the `after()` job run, which downloads
+// attachments, creates and processes their documents, and then runs payment matching within
+// this same invocation (decisions/0076). The runner stops starting jobs after
+// `AFTER_RESPONSE_JOB_BUDGET_MS`, leaving 3 minutes for the last one it started.
+export const maxDuration = 300;
 
 /** An `email.received` event is metadata only (a few KB); anything far larger is not one. */
 const MAX_WEBHOOK_BODY_BYTES = 256 * 1024;
@@ -129,8 +132,12 @@ export const POST = createApiHandlerFromContract(contract, {
         // directly); the cron sweep picks the jobs up then.
         try {
           after(async () => {
+            // One budget for the whole invocation, shared by every addressed workspace.
+            const deadline = Date.now() + AFTER_RESPONSE_JOB_BUDGET_MS;
             for (const workspaceId of result.workspaceIds) {
-              await runDueJobs({ workspaceId, limit: 5 });
+              const budgetMs = deadline - Date.now();
+              if (budgetMs <= 0) break;
+              await runDueJobs({ workspaceId, limit: 5, budgetMs });
             }
           });
         } catch (err) {

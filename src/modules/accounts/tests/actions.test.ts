@@ -14,6 +14,16 @@ vi.mock("next/cache", () => ({
   revalidatePath: (path: string) => revalidatePathMock(path),
 }));
 
+const afterMock = vi.fn();
+vi.mock("next/server", () => ({
+  after: (cb: () => void) => afterMock(cb),
+}));
+
+const runDueJobsMock = vi.fn();
+vi.mock("@/platform/jobs/server", () => ({
+  runDueJobs: (input: unknown) => runDueJobsMock(input),
+}));
+
 const accountsUseCases = {
   createAccount: vi.fn(),
   updateAccount: vi.fn(),
@@ -24,6 +34,7 @@ vi.mock("@/persistence/composition/request-services", () => ({
 }));
 
 import { PERMISSIONS } from "@/platform/access";
+import { AFTER_RESPONSE_JOB_BUDGET_MS } from "@/platform/jobs";
 import { requirePermission } from "@/platform/access/server";
 
 import { createAccountAction, importFromDocumentAction, updateAccountAction } from "../actions";
@@ -100,6 +111,7 @@ describe("importFromDocumentAction", () => {
 
     expect(result).toEqual({ status: "error", errorCode: "forbidden" });
     expect(accountsUseCases.importFromDocument).not.toHaveBeenCalled();
+    expect(afterMock).not.toHaveBeenCalled();
   });
 
   it("an admin re-runs the import", async () => {
@@ -110,5 +122,10 @@ describe("importFromDocumentAction", () => {
 
     expect(result).toEqual({ status: "success", data: { status: "imported" } });
     expect(accountsUseCases.importFromDocument).toHaveBeenCalledWith({ workspaceId: "w1", documentId: DOCUMENT_ID, accountId: undefined });
+    // decisions/0076: the import queued a matching run due now; the runner starts after the
+    // response, scoped to the caller's own workspace, instead of waiting for the cron sweep.
+    expect(afterMock).toHaveBeenCalledTimes(1);
+    await afterMock.mock.calls[0]![0]();
+    expect(runDueJobsMock).toHaveBeenCalledWith({ workspaceId: "w1", limit: 5, budgetMs: AFTER_RESPONSE_JOB_BUDGET_MS });
   });
 });

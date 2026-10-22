@@ -1466,8 +1466,12 @@ describe("createDocumentUseCases", () => {
       expect(updated.direction).toBe("incoming");
       expect(updated.totalAmountCents).toBe(4999);
       expect(updated.paymentStatus).toBe("open");
-      // Invoice-shaped again, so the debounced matching run is scheduled exactly as on a normal run.
-      expect(jobState.filter((j) => j.kind === "match-payments")).toHaveLength(1);
+      // Invoice-shaped again, so the matching run is scheduled exactly as on a normal run: due
+      // immediately, so the runner that re-extracted the document also matches it (decisions/0076).
+      const matchJobs = jobState.filter((j) => j.kind === "match-payments");
+      expect(matchJobs).toHaveLength(1);
+      expect(matchJobs[0]!.runAt).toEqual(FIXED_NOW);
+      expect(matchJobs[0]!.payload).toMatchObject({ trigger: "document_done" });
       expect(documentContactState).toEqual([expect.objectContaining({ documentId: doc.id, role: "sender" })]);
     });
 

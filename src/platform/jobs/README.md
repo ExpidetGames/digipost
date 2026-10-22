@@ -11,7 +11,11 @@ Maintenance triggers:
 - The `jobs` table's columns, the claim query, or the backoff formula change
 - A new trigger calls `runDueJobs`
 - The lease duration or default claim limit changes
-Last verified: 2026-10-22, decisions/0075-email-intake.md: two new job kinds, `process-inbound-email`
+Last verified: 2026-10-22, decisions/0076-match-after-every-trigger.md: `runDue` takes a
+`budgetMs` (every `after()` trigger passes `AFTER_RESPONSE_JOB_BUDGET_MS`, `core/run-budget.ts`)
+and releases claimed jobs it did not start (`JobsRepository.release`); claims are ordered by
+`run_at`, then `created_at`; `JobsRepository.scheduleNow`/`hasQueuedPending` replace
+`scheduleDebounced`/`hasScheduledPending`. Previously 2026-10-22, decisions/0075-email-intake.md: two new job kinds, `process-inbound-email`
 (handler: `MailIntakeUseCases.processInboundEmail`) and `send-mail-intake-notification`, both
 registered in `src/persistence/composition/job-handlers.ts`. Previously 2026-09-20, F5 (decisions/0027-hardening-and-deletion.md): two new job kinds -
 `cleanup-workspace-storage` (workspace deletion's durable object-storage cleanup retry,
@@ -40,8 +44,9 @@ from each owning module's own use-case methods ("handlers registered where they 
 - `index.ts` (neutral, no `server-only`, no I/O): `JOB_KINDS`/`JobKind` (the stable kind
   identifiers), `TransientJobError`/`PermanentJobError` (the two shapes a handler throws -
   `src/persistence/use-cases/jobs-use-cases.ts`'s runner only ever distinguishes these two),
-  `computeBackoffMs` (pure exponential backoff with half-jitter).
-- `server.ts` (`import "server-only"`): `runDueJobs({ limit?, workspaceId? })` - the one
+  `computeBackoffMs` (pure exponential backoff with half-jitter), `AFTER_RESPONSE_JOB_BUDGET_MS`
+  (how long a runner started from `after()` keeps starting jobs, decisions/0076).
+- `server.ts` (`import "server-only"`): `runDueJobs({ limit?, workspaceId?, budgetMs? })` - the one
   function every trigger calls. A thin wrapper around `getRequestServices().jobs.runDue(...)`;
   the actual claim/dispatch/backoff logic lives in `src/persistence/use-cases/jobs-use-cases.ts`
   (this owner's use case, run through the composition root like every other owner's).
@@ -55,6 +60,9 @@ from each owning module's own use-case methods ("handlers registered where they 
   literal values are also stored in the `jobs.kind` database column, so renaming one needs a
   data migration, not just a code change.
 - `core/errors.ts` - `TransientJobError`/`PermanentJobError`, both carrying a stable `code`.
+- `core/run-budget.ts` - `AFTER_RESPONSE_JOB_BUDGET_MS` (two minutes) and why: the routes that
+  run jobs after their response declare `maxDuration = 300`, so a job started just before the
+  budget ends still has three minutes to finish.
 - `core/backoff.ts` - `computeBackoffMs(attempt, options?)`: `min(maxMs, baseMs *
   2^(attempt-1))` scaled by a random factor in `[0.5, 1)` (half-jitter, avoids many jobs
   retrying at the exact same instant). Pure: `random`/`baseMs`/`maxMs` are all injectable.
@@ -81,7 +89,20 @@ joins can cross owner boundaries cleanly).
   `runDue` re-claims (up to 10 rounds)
   until a round claims nothing, so a single caller invocation - the UI "kick", the cron sweep,
   the upload route's `after()` - actually drains a realistic cascade instead of needing to be
-  invoked twice.
+  invoked twice. This is what lets payment matching run right after a finished invoice or an
+  imported statement (decisions/0076): the trigger queues `match-payments` due now, and the
+  same invocation claims it in a later round. Claims are ordered by `run_at`, then
+  `created_at`, so that matching job runs after the documents already queued before it.
+- **A time budget for `after()` runners.** `budgetMs` (decisions/0076): once it is used up,
+  `runDue` starts no further job, and the claimed jobs of the current round it did not start
+  are released (`JobsRepository.release`: lease cleared, the counted attempt given back) so
+  another claimer can take them at once. A job that already started always runs to its end.
+  Every `after()` trigger passes `AFTER_RESPONSE_JOB_BUDGET_MS`; the cron sweep passes none.
+- **At most one queued run of a workspace-wide job.** `JobsRepository.scheduleNow` makes a job
+  of a kind due now for a workspace: it pulls an already queued (pending, not leased) one
+  forward to `least(run_at, now)` or inserts a new one; a running (leased) job does not count.
+  `hasQueuedPending` reports whether such a queued job exists (decisions/0039's follow-up
+  check). Today only `match-payments` uses both.
 - **Status only tracks the terminal outcome.** `jobs.status` is `pending | done | failed`; an
   in-flight claim is `locked_until` being in the future, not a fourth "processing" value -
   this keeps the claim predicate a single comparison instead of two overlapping state
@@ -98,7 +119,9 @@ joins can cross owner boundaries cleanly).
   crosses a Next.js request boundary the way `instrumentation.ts`'s `onRequestError` expects
   - without this explicit call it would never reach Sentry regardless of `SENTRY_DSN`. Never
   logs the job's own `payload` or a thrown error's raw message, only these stable fields.
-- **Three triggers, one function.** `after()` (the upload route and `retryProcessingAction`),
+- **Three triggers, one function.** `after()` (the upload route, the Resend webhook,
+  `retryProcessingAction`/`reclassifyDocumentAction`, `importFromDocumentAction`,
+  `setPaymentAutoConfirmAction`),
   the cron sweeper (`src/app/api/cron/process-jobs`), and the UI's workspace-scoped "kick"
   (`src/modules/documents/actions.ts`'s `kickProcessingAction`) all call `runDueJobs` - see
   decisions/0016-processing-pipeline-and-ai.md for why three, and the Vercel Hobby cron
@@ -116,7 +139,10 @@ None from this owner's own `core`/`server` files. `src/persistence/use-cases/job
 `src/persistence/composition/create-request-services.ts` (builds `jobs:
 createJobsUseCases({ repos, uow, handlers })`), `src/persistence/composition/job-handlers.ts`
 (builds the `handlers` map this owner's runner dispatches through), `src/modules/documents/actions.ts`
-(`retryProcessingAction`/`kickProcessingAction` both call `runDueJobs` via `after()`),
+(`retryProcessingAction`/`reclassifyDocumentAction`/`kickProcessingAction` call `runDueJobs` via `after()`),
+`src/modules/accounts/actions.ts` (`importFromDocumentAction`) and `src/modules/payments/actions.ts`
+(`setPaymentAutoConfirmAction`) likewise, `src/app/api/documents/route.ts` and
+`src/app/api/webhooks/resend/route.ts` (both `after()`, `maxDuration = 300`),
 `src/app/api/cron/process-jobs/route.ts` (the cron sweeper),
 `src/app/api/cron/purge-rejected-intake/route.ts` (F5: enqueues then immediately sweeps),
 and `src/persistence/use-cases/documents-use-cases.ts`/`workspaces-use-cases.ts`
@@ -131,7 +157,9 @@ must participate in the caller's own transaction).
 - `src/persistence/tests/jobs-repository.db.test.ts` (real Postgres, `pnpm test:db` / part of
   `pnpm test:docker`): two concurrent `claimDue` callers never receive the same job, an
   expired lease is reclaimable, a not-yet-due or already-leased job is not claimed, workspace
-  scoping, and `enqueue` rolling back with its transaction.
+  scoping, `enqueue` rolling back with its transaction, and (decisions/0076) `scheduleNow`
+  inserting/deduplicating/pulling forward while ignoring a leased run, `hasQueuedPending`,
+  `release`, and the `created_at` tie break of `claimDue`.
 - `src/persistence/tests/documents-use-cases.test.ts` (unit, `pnpm test`): the runner's own
   dispatch/retry/backoff behavior is exercised indirectly through `DocumentUseCases.processDocument`
   against a fake `JobsRepository` (`src/persistence/tests/support/fake-jobs-repository.ts`).
@@ -140,7 +168,9 @@ must participate in the caller's own transaction).
   a single permanent failure, a full transient-then-exhausted retry cycle (D2: the specific
   error code survives, never a generic fallback), an unclassified error (D2: falls back to
   a generic code, still logged/captured), the `unknown_job_kind` no-handler-registered path,
-  and (D3) that logging/`captureError` fire with the right level/fields in each case.
+  and (D3) that logging/`captureError` fire with the right level/fields in each case; plus
+  (decisions/0076) a job a handler queues due now runs in the same call after the jobs queued
+  before it, and `budgetMs` stops starting jobs and releases the claimed rest.
 - `src/app/api/cron/process-jobs/route.test.ts` (unit): the cron route's own access-step
   gate, `runDueJobs` mocked. `tests/integration/http/cron-process-jobs.integration.test.ts`:
   the same route against real Postgres, unmocked.

@@ -14,7 +14,10 @@ Last verified: 2026-09-22, initial version
 
 ## Status
 
-Accepted
+Superseded in part by decisions/0076-match-after-every-trigger.md (2026-10-22): the 90-second
+trailing debounce is gone, a trigger now makes one queued run per workspace due immediately, because
+production only runs jobs from `after()` and a two-hourly cron and the delayed run waited for the
+cron. The 15-minute job lease still holds.
 
 ## Context
 

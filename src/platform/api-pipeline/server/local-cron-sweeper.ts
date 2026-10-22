@@ -2,9 +2,9 @@ import "server-only";
 
 /**
  * Local development only (decisions/0042). Production drives the job queue from an external
- * scheduler calling `GET /api/cron/process-jobs`; `next dev` has none, so retries and the
- * debounced matching run (decisions/0041) would otherwise wait until the next upload happens to
- * kick the queue. Calls that same route with the same bearer secret every 20 seconds, never two
+ * scheduler calling `GET /api/cron/process-jobs`; `next dev` has none, so retries and matching
+ * follow-ups (decisions/0039) would otherwise wait until the next upload happens to kick the
+ * queue. Calls that same route with the same bearer secret every 20 seconds, never two
  * calls at once. Started from `src/instrumentation.ts`.
  */
 export function startLocalCronSweeper(): void {

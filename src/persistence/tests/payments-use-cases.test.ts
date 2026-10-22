@@ -17,7 +17,7 @@ import {
   createFakePaymentRejectionRepository,
   isConfirmedPredicate,
 } from "@/persistence/tests/support/fake-payments-repositories";
-import { createFakeJobsRepository } from "@/persistence/tests/support/fake-jobs-repository";
+import { createFakeJobsRepository, jobRow } from "@/persistence/tests/support/fake-jobs-repository";
 import { withUnusedRepositories } from "@/persistence/tests/support/unused-repositories";
 import { createFakeWorkspaceRepository, workspaceRow } from "@/persistence/tests/support/fake-workspaces-repositories";
 import type { PaymentAutoConfirmMode } from "@/modules/payments";
@@ -370,6 +370,32 @@ describe("createPaymentsUseCases.runMatching", () => {
     expect(followUps).toHaveLength(1);
     expect(followUps[0]?.payload).toMatchObject({ trigger: "cron" });
   });
+
+  it("queues no follow-up while an immediate run is already queued: that run schedules its own (decisions/0076)", async () => {
+    const now = new Date("2026-03-15T12:00:00.000Z");
+    const s = setup({ autoConfirm: "none", now });
+    s.transactionState.push(transactionRow({ workspaceId: WORKSPACE, accountId: "a1", idempotencyKey: "k1", amountCents: -2000, counterpartyName: "Gehalt" }));
+    // A document finished while this run was going: its run is queued, due now, not leased.
+    s.jobState.push(jobRow({ kind: "match-payments", workspaceId: WORKSPACE, payload: { workspaceId: WORKSPACE, trigger: "document_done" }, runAt: now }));
+
+    await s.useCases.runMatching({ workspaceId: WORKSPACE, trigger: "document_done" });
+
+    const matchJobs = s.jobState.filter((j) => j.kind === "match-payments");
+    expect(matchJobs).toHaveLength(1);
+    expect(matchJobs[0]?.runAt).toEqual(now);
+  });
+
+  it("scheduleMatching pulls a queued six-hour follow-up forward to now instead of adding a second run (decisions/0076)", async () => {
+    const now = new Date("2026-03-15T12:00:00.000Z");
+    const s = setup({ now });
+    s.jobState.push(jobRow({ kind: "match-payments", workspaceId: WORKSPACE, payload: { workspaceId: WORKSPACE, trigger: "cron" }, runAt: new Date(now.getTime() + 6 * 3_600_000) }));
+
+    await s.useCases.scheduleMatching({ workspaceId: WORKSPACE });
+
+    const matchJobs = s.jobState.filter((j) => j.kind === "match-payments");
+    expect(matchJobs).toHaveLength(1);
+    expect(matchJobs[0]?.runAt).toEqual(now);
+  });
 });
 
 describe("createPaymentsUseCases decisions", () => {
@@ -566,7 +592,7 @@ describe("createPaymentsUseCases decisions", () => {
 
 // decisions/0048-app-store-reports.md: the owner's own actual goal - every Apple/Google credit
 // on the bank account gets its report as the document that explains it. `runMatching` is the
-// entry point a bank-statement import's own debounced `match-payments` job actually calls.
+// entry point a bank-statement import's own `match-payments` job actually calls.
 // decisions/0025: the same 50,00 EUR debit was confirmed against two copies of one letter, so
 // the transaction ended up allocated twice. Confirming or linking past the transaction's
 // unallocated amount is now an error; the suggestion itself stays `suggested`.

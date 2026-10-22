@@ -9,7 +9,7 @@
 // or a counterparty (`finance.read` is admin-only, decisions/0024-accounts-and-transactions.md).
 import { expect, test } from "./helpers/fixtures";
 import { createTestUser, loginAs } from "./helpers/auth";
-import { runPaymentMatchingNow } from "./helpers/jobs";
+import { databaseNow, waitForPaymentMatching } from "./helpers/jobs";
 import { addMemberToWorkspace, setPaymentAutoConfirm } from "./helpers/workspace";
 import { deleteUserById, uniqueEmail } from "./helpers/db";
 import { createTestPdfBuffer } from "./helpers/pdf-fixture";
@@ -59,15 +59,17 @@ test(
     const invoiceUrl = page.url();
 
     // 2. The camt.053 statement: `documents-use-cases.ts`'s camt053 branch enqueues
-    // `import-account-transactions`, which schedules `match-payments` behind the matching
-    // debounce (decisions/0041), so the spec runs that job right after the import.
+    // `import-account-transactions`, which queues `match-payments` due immediately
+    // (decisions/0076); the upload route's own `after()` runner runs all three jobs, so the spec
+    // only waits for that run, it never triggers one itself.
+    const statementUploadedAfter = await databaseNow();
     await page.goto("/dashboard/scan");
     await page.setInputFiles('input[type="file"]', { name: "kontoauszug.xml", mimeType: "application/xml", buffer: xmlBuffer() });
     await expect(page.getByText("kontoauszug.xml")).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: "Hochladen" }).click();
     await expect.poll(() => new URL(page.url()).pathname, { timeout: 20_000 }).toMatch(/^\/dashboard\/documents\/.+/);
     await expect(page.getByText("Importierte Daten")).toBeVisible({ timeout: 20_000 });
-    await runPaymentMatchingNow(adminUser.workspace.id, baseURL!);
+    await waitForPaymentMatching(adminUser.workspace.id, statementUploadedAfter);
 
     // 3. "Zuordnung" shows the unmatched transaction with its suggestion - confirm it there.
     await page.goto("/dashboard/finance/zuordnung");

@@ -73,13 +73,17 @@ export function createJobHandlers(deps: {
       // cleared them once; this second pass removes any a concurrent matching run created
       // against the old fields while the document was being re-extracted. AI suggestions in
       // particular would otherwise survive every later run (decisions/0045 only recomputes
-      // the deterministic ones). The debounced matching run `processOcrDocument` schedules
-      // for a still invoice-shaped document then proposes fresh ones. A failure here is logged,
-      // not thrown: rethrowing would retry the whole job, OCR and analysis included, for a
-      // cleanup the action already did once.
+      // the deterministic ones). The immediate matching run `processOcrDocument` schedules
+      // for a still invoice-shaped document then proposes fresh ones (decisions/0076); it is
+      // scheduled once more after the cleanup, because a concurrent runner may have claimed the
+      // first one between re-extraction and this cleanup, and its fresh suggestions were just
+      // discarded with the stale ones (deduplicated: nothing is added while a run is queued).
+      // A failure here is logged, not thrown: rethrowing would retry the whole job, OCR and
+      // analysis included, for a cleanup the action already did once.
       if (input.kindOverride) {
         try {
           await deps.payments.discardOpenSuggestionsForDocument({ workspaceId: input.workspaceId, documentId: input.documentId });
+          await deps.payments.scheduleMatching({ workspaceId: input.workspaceId });
         } catch (err) {
           console.error("[documents] failed to discard open payment suggestions after re-extraction", { workspaceId: input.workspaceId, documentId: input.documentId, err });
         }

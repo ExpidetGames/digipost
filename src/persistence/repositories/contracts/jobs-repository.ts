@@ -59,13 +59,22 @@ export interface JobsRepository {
    * `"pending"` - the job is due again once `run_at` passes. */
   reschedule(id: string, input: { runAt: Date; errorCode: string; now: Date }): Promise<void>;
   findById(id: string): Promise<JobRow | null>;
-  /** `true` when a job of this kind is already scheduled for this workspace in the future
-   * (`status = 'pending'` and `run_at > now`). A running job is excluded: its `run_at` is already
-   * past. Lets a self-rescheduling job keep at most one follow-up queued (decisions/0039). */
-  hasScheduledPending(input: { kind: string; workspaceId: string; now: Date }): Promise<boolean>;
-  /** Trailing debounce (decisions/0041): if a job of this kind is already scheduled for this
-   * workspace in the future, move its `run_at` to `input.runAt` instead of adding another;
-   * otherwise enqueue a new one. A burst of triggers therefore collapses into one run shortly
-   * after the last trigger. */
-  scheduleDebounced(input: { kind: string; workspaceId: string; payload: unknown; runAt: Date; now: Date }): Promise<void>;
+  /** Gives claimed jobs back without running them (`runDue` ran out of its time budget before
+   * reaching them): clears the lease and undoes the attempt `claimDue` counted, so the job is
+   * due again right away for the next claimer and no attempt is lost to a job that never ran. */
+  release(ids: string[], now: Date): Promise<void>;
+  /** `true` when a job of this kind is queued for this workspace: `status = 'pending'` and not
+   * currently leased (`locked_until` null or expired), whatever its `run_at`. A job that is
+   * running right now is excluded, so a running `match-payments` job asking this about its own
+   * kind only sees OTHER queued runs. Lets a self-rescheduling job keep at most one queued run
+   * (decisions/0039): a queued run, due now or hours out, schedules its own follow-up when it
+   * finishes. */
+  hasQueuedPending(input: { kind: string; workspaceId: string; now: Date }): Promise<boolean>;
+  /** Makes a job of this kind due right now for this workspace (decisions/0076): if one is
+   * already queued (pending and not leased, see `hasQueuedPending`), its `run_at` is pulled
+   * forward to `now` when it lies in the future (a six-hour follow-up becomes the immediate
+   * run) instead of adding another; otherwise a new job due at `now` is enqueued. A job that is
+   * running right now does not count, because it may already have read the data the new
+   * trigger is about. A burst of triggers therefore leaves at most one queued run. */
+  scheduleNow(input: { kind: string; workspaceId: string; payload: unknown; now: Date }): Promise<void>;
 }
