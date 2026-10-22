@@ -35,6 +35,11 @@ export const PERMISSIONS = {
    * in the product, deliberately its own bundle rather than reusing `membersManage` (removing
    * a member is reversible by re-inviting; deleting the workspace is not). */
   workspaceManage: "workspace.manage",
+  /** decisions/0075-email-intake.md: changing the E-Mail-Eingang (`/dashboard/email-intake`):
+   * a new address, on/off, the sender policy and its allowlist, and reading the received-mail
+   * log. Admin-only: every member SEES the address (any member may forward mail to it, the
+   * same way any member may upload), only the admin decides who may send to it. */
+  mailIntakeManage: "mail_intake.manage",
 } as const;
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 

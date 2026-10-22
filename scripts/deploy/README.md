@@ -16,7 +16,9 @@ Maintenance triggers:
 - The set of keys the workflows read from Infisical `/ci` changes
 - The Vercel CLI pin in `scripts/vercel/package.json` is raised
 - A provider (Neon, R2, Vercel, Infisical, the mail provider) is replaced
-Last verified: 2026-10-21, against the workflow files and `src/platform/env/server/env.ts`. The pipeline has not
+Last verified: 2026-10-22, decisions/0075-email-intake.md added the four E-Mail-Eingang variables and "Resend
+receiving" in section 7 (the production receiving domain is the account's own `<id>.resend.app`, kept in Infisical,
+not in this public repository). Previously 2026-10-21, against the workflow files and `src/platform/env/server/env.ts`. The pipeline has not
 run on GitHub yet; section 12 lists what that leaves unverified.
 
 This file is the guide behind decisions/0073-public-repo-and-production-pipeline.md. The repository is public: no
@@ -30,7 +32,7 @@ value, id or address of a real account is written into it. Names between `<` and
 4. One-time setup: Infisical
 5. One-time setup: Vercel
 6. One-time setup: Neon
-7. One-time setup: Cloudflare R2, mail, Mistral, Sentry
+7. One-time setup: Cloudflare R2, mail, Mistral, Resend receiving, Sentry
 8. First deployment, step by step
 9. Releasing
 10. Rolling back
@@ -125,6 +127,10 @@ Three groups. The runtime ones are validated lazily by `serverEnv()` (`src/platf
 | `MISTRAL_API_KEY` | see section 7 | Set for internal use (own company mail only, decisions/0073); unset for any external customer until the DPA is signed | Unset in production makes document processing fail with `ai_not_configured`, on purpose. |
 | `AI_PROVIDER` | optional | Leave unset | Never `fake` in production. |
 | `MISTRAL_OCR_MODEL`, `MISTRAL_CHAT_MODEL` | optional | Leave unset | Defaults to Mistral's own model names. |
+| `INBOUND_EMAIL_DOMAIN` | for the E-Mail-Eingang | `<id>.resend.app` | The Resend-managed receiving subdomain (section 7, "Resend receiving"). Every workspace's address is `post-<token>@` this domain; changing it later changes every address. Unset: the feature is off. |
+| `RESEND_WEBHOOK_SECRET` | for the E-Mail-Eingang | The webhook's signing secret (`whsec_...`) | Sensitive. Unset: `POST /api/webhooks/resend` answers 503. |
+| `RESEND_API_KEY` | for the E-Mail-Eingang | A Resend API key with access to received emails | Sensitive. Unset in production makes processing a received mail fail (`inbound_mail_not_configured`), on purpose. |
+| `INBOUND_MAIL_PROVIDER` | optional | Leave unset | Never `fake` in production. |
 | `BILLING_TEST_MODE` | optional | **Unset or `false`** | `true` fakes payments (decisions/0017); no payment provider exists yet. |
 | `SENTRY_DSN` | optional | The project's DSN | Read at run time and, mirrored into `NEXT_PUBLIC_SENTRY_DSN`, at build time: must not be Sensitive. |
 | `APP_COMMIT_SHA` | never set here | | Set per deployment by `deploy-production.yml` (`vercel deploy --env`); `/api/health` reports its first seven characters as `version`. |
@@ -291,7 +297,7 @@ Plan: **Pro** (a Hobby plan allows only daily crons and fewer deployment feature
    not a long-term archive. Object storage needs the same thought (R2 has no built-in versioning of deleted
    objects; decide whether you want a second bucket or replication).
 
-## 7. One-time setup: Cloudflare R2, mail, Mistral, Sentry
+## 7. One-time setup: Cloudflare R2, mail, Mistral, Resend receiving, Sentry
 
 **Cloudflare R2** (decisions/0012-object-storage.md, `src/platform/object-storage` is the only reader of the
 `S3_*` variables):
@@ -321,6 +327,28 @@ risk knowingly. This does not extend to any external customer: before another co
 DPA must be signed and the privacy policy lawyer-reviewed. Without the key, production still runs, uploads
 work, and processing fails with `ai_not_configured`. The legal pages (`/legal-notice`, `/privacy`) are still
 marked drafts.
+
+**Resend receiving, the E-Mail-Eingang** (decisions/0075-email-intake.md, `src/platform/inbound-mail` is the
+only reader of the Resend variables):
+
+- Receiving uses the Resend-managed subdomain `<id>.resend.app`; no MX record is needed on a domain of your
+  own. With a custom receiving domain instead you would add Resend's MX record to it and set
+  `INBOUND_EMAIL_DOMAIN` to it, which changes every workspace's address.
+- In the Resend dashboard create a **webhook**: endpoint `https://<your domain>/api/webhooks/resend`, event
+  **`email.received`** only. Copy its signing secret into `/app` `RESEND_WEBHOOK_SECRET`.
+- Create an **API key** that can read received emails and put it into `/app` `RESEND_API_KEY`; set
+  `INBOUND_EMAIL_DOMAIN=<id>.resend.app`. Wait for the sync, then run *Deploy production*.
+- The webhook receives **every** mail the whole Resend account receives. The route keeps only exactly
+  `post-<token>@<id>.resend.app` with an existing, enabled token and answers everything else 200 without
+  storing it, so the endpoint is never disabled for "failing". The production domain must be reachable without
+  Vercel Deployment Protection (it is: protection only covers the staged `*.vercel.app` address).
+- Check: open "E-Mail-Eingang" as admin, send a mail with a PDF from a team member's own mailbox to the address,
+  and see the document in the inbox and the mail in the page's log. A sender on the allowlist must pass DMARC
+  (or SPF and DKIM) or the mail is rejected as possibly forged.
+- **Free tier**: 100 mails per day, shared by magic links and the E-Mail-Eingang's admin notices (at most one per
+  workspace and reason per day). Enough for internal use; move to a paid plan before customers.
+- **Data protection**: like Mistral, Resend stores incoming mail (body and attachments included) as a
+  sub-processor with no DPA yet. Internal use with the company's own mail only, until the DPA is signed.
 
 **Sentry** (optional): create a project, put its DSN into `/app` `SENTRY_DSN`. For source maps add
 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` (build-time only; an auth token is a secret). See

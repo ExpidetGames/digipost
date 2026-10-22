@@ -5,6 +5,7 @@ import { requireWorkspaceMember } from "@/platform/access/server";
 import { getDocumentDetailProjection } from "@/modules/documents/server";
 import { DocumentDetailClient } from "@/modules/documents/client";
 import { kickProcessingAction } from "@/modules/documents/actions";
+import { getEmailSourceForDocumentProjection } from "@/modules/mail-intake/server";
 import { isFakeAiProviderActive } from "@/platform/mistral/server";
 import { getDocumentPaymentSectionProjection, getSettlementReportProjection, listUnmatchedTransactionsProjection } from "@/modules/payments/server";
 import { PaymentSection, SettlementReportSection, type ManualLinkCandidate } from "@/modules/payments/client";
@@ -40,10 +41,12 @@ export default async function DocumentDetailPage({ params }: PageProps<"/dashboa
   // itself invoice-shaped (no `direction`/`totalAmountCents`), so `isInvoiceShaped` is always
   // `false` for one.
   const isSettlementReport = (document.kind === "payout_report" || document.kind === "platform_settlement") && document.intakeStatus === "confirmed";
-  const [paymentSection, manualLinkCandidates, settlementReport] = await Promise.all([
+  const [paymentSection, manualLinkCandidates, settlementReport, emailSource] = await Promise.all([
     isInvoiceShaped ? getDocumentPaymentSectionProjection(access.workspace.id, id, canReadFinance) : Promise.resolve(null),
     isInvoiceShaped && canManageFinance ? listUnmatchedTransactionsProjection(access.workspace.id) : Promise.resolve(null),
     isSettlementReport && canReadFinance ? getSettlementReportProjection(access.workspace.id, id) : Promise.resolve(null),
+    // decisions/0075-email-intake.md: a document without an uploader may have come in by mail.
+    document.uploadedByEmail ? Promise.resolve(null) : getEmailSourceForDocumentProjection(access.workspace.id, id),
   ]);
   const candidates: ManualLinkCandidate[] | undefined = manualLinkCandidates
     ?.slice(0, MANUAL_LINK_CANDIDATE_LIMIT)
@@ -62,6 +65,7 @@ export default async function DocumentDetailPage({ params }: PageProps<"/dashboa
         document={document}
         isFakeAiProvider={isFakeAiProviderActive()}
         kickAction={kickProcessingAction}
+        emailSender={emailSource?.fromAddress ?? null}
       />
       {paymentSection ? (
         <PaymentSection documentId={id} section={paymentSection} canManage={canManageFinance} manualLinkCandidates={candidates} />

@@ -669,7 +669,8 @@
     "intakeReconciles": "Der Kontoauszug ist rechnerisch stimmig.",
     "intakeDoesNotReconcile": "Der Kontoauszug ist rechnerisch nicht stimmig. Bitte prüfen Sie den Auszug.",
     "possibleDuplicateHint": "Dieses Dokument könnte bereits vorhanden sein (möglicherweise doppelt):",
-    "unclearDirectionHint": "Die Richtung dieses Dokuments konnte nicht sicher bestimmt werden. Bitte prüfen Sie, ob die Dokumentart stimmt."
+    "unclearDirectionHint": "Die Richtung dieses Dokuments konnte nicht sicher bestimmt werden. Bitte prüfen Sie, ob die Dokumentart stimmt.",
+    "receivedByEmailFrom": "Per E-Mail von"
   },
   "Team": {
     "heading": "Team",
@@ -1458,6 +1459,96 @@
       "outsidePeriodWithoutAmount": "außerhalb des Zeitraums ({date})",
       "notListed": "nicht in dieser Übersicht ({date}, {amount})",
       "notListedWithoutAmount": "nicht in dieser Übersicht ({date})"
+    }
+  },
+  "MailIntake": {
+    "heading": "E-Mail-Eingang",
+    "description": "Leiten Sie Rechnungen, Briefe und Kontoauszüge per E-Mail an die Adresse Ihres Arbeitsbereichs weiter. Jeder unterstützte Anhang wird zu einem eigenen Dokument im Posteingang.",
+    "notConfigured": "Der E-Mail-Eingang ist für diese Installation noch nicht eingerichtet.",
+    "addressHeading": "Ihre Eingangsadresse",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "disabledHint": "Der E-Mail-Eingang ist ausgeschaltet. E-Mails an diese Adresse werden nicht verarbeitet.",
+    "instructions": {
+      "forward": "Senden oder leiten Sie die E-Mail mit den Dokumenten als Anhang an diese Adresse weiter.",
+      "attachments": "Unterstützt werden PDF, JPEG, PNG, CAMT.053, MT940, CSV und TSV. Jedes Bild wird ein eigenes Dokument; kleine Bilder wie Logos in der Signatur werden übersprungen.",
+      "limits": "Pro E-Mail werden höchstens 10 Anhänge mit je bis zu 15 MB verarbeitet. Der Text der E-Mail selbst wird nicht gespeichert.",
+      "secret": "Behandeln Sie die Adresse vertraulich. Wer sie kennt, kann Ihnen Dokumente senden."
+    },
+    "adminHeading": "Adresse verwalten",
+    "enable": "Einschalten",
+    "disable": "Ausschalten",
+    "regenerate": "Neue Adresse erzeugen",
+    "regenerateConfirm": "Die bisherige Adresse funktioniert danach sofort nicht mehr. Fortfahren?",
+    "regenerateConfirmYes": "Ja, neue Adresse erzeugen",
+    "cancel": "Abbrechen",
+    "policyHeading": "Wer darf Dokumente senden?",
+    "policies": {
+      "allowlist": {
+        "label": "Nur bestimmte Absender",
+        "hint": "Mitglieder Ihres Teams sowie die unten eingetragenen Adressen und Domains. Die E-Mail muss die Absenderprüfung (DMARC, sonst SPF und DKIM) bestehen, damit gefälschte Absender nicht durchkommen."
+      },
+      "anyone": {
+        "label": "Jeder, der die Adresse kennt",
+        "hint": "Praktisch, wenn Lieferanten direkt an diese Adresse senden. Die Absenderadresse einer E-Mail lässt sich fälschen."
+      }
+    },
+    "allowlistHeading": "Erlaubte Absender",
+    "allowlistHint": "Eine vollständige Adresse (buchhaltung@lieferant.de) oder eine Domain (lieferant.de, gilt auch für Subdomains). Die Adressen Ihrer Teammitglieder sind immer erlaubt.",
+    "allowlistEmpty": "Noch keine Absender eingetragen. Nur E-Mails Ihrer Teammitglieder werden verarbeitet.",
+    "senderKinds": {
+      "email": "Adresse",
+      "domain": "Domain"
+    },
+    "addSenderLabel": "Absender hinzufügen",
+    "addSenderPlaceholder": "rechnung@lieferant.de oder lieferant.de",
+    "addSender": "Hinzufügen",
+    "removeSender": "Entfernen",
+    "removeSenderLabel": "{value} entfernen",
+    "logHeading": "Empfangene E-Mails",
+    "logHint": "Die letzten 50 E-Mails an diese Adresse. Die Einträge bleiben erhalten, bis der Arbeitsbereich gelöscht wird.",
+    "logEmpty": "Noch keine E-Mails empfangen.",
+    "columnReceivedAt": "Eingang",
+    "columnSender": "Absender",
+    "columnSubject": "Betreff",
+    "columnStatus": "Ergebnis",
+    "noSubject": "(ohne Betreff)",
+    "unnamedAttachment": "Anhang ohne Namen",
+    "statuses": {
+      "received": "In Bearbeitung",
+      "processed": "Importiert",
+      "rejected": "Abgelehnt",
+      "failed": "Fehlgeschlagen"
+    },
+    "reasons": {
+      "sender_not_allowed": "Absender nicht erlaubt",
+      "sender_not_authenticated": "Absender nicht bestätigt (SPF/DKIM/DMARC)",
+      "recipient_not_matched": "Adresse inzwischen ersetzt",
+      "no_supported_attachment": "Kein unterstützter Anhang",
+      "quota_exceeded": "Dokumentenkontingent ausgeschöpft",
+      "provider_unavailable": "Anhänge konnten nicht abgerufen werden"
+    },
+    "outcomes": {
+      "imported": "als Dokument angelegt",
+      "duplicate": "bereits vorhanden",
+      "skipped_small": "übersprungen (kleines Bild)",
+      "too_large": "zu groß (über 15 MB)",
+      "over_limit": "nicht verarbeitet (mehr als 10 Anhänge)",
+      "unsupported": "Dateiformat nicht unterstützt",
+      "invalid": "Datei beschädigt oder zu lang",
+      "quota_exceeded": "nicht importiert (Kontingent ausgeschöpft)",
+      "download_failed": "Download fehlgeschlagen"
+    },
+    "errors": {
+      "invalid_input": "Die Eingabe ist ungültig.",
+      "invalid_sender_entry": "Bitte geben Sie eine E-Mail-Adresse oder eine Domain ein.",
+      "sender_already_allowed": "Dieser Absender ist bereits eingetragen.",
+      "too_many_allowed_senders": "Es können höchstens 200 Absender eingetragen werden.",
+      "not_found": "Der Eintrag wurde nicht gefunden.",
+      "unauthenticated": "Bitte melden Sie sich erneut an.",
+      "no_workspace": "Sie gehören keinem Arbeitsbereich an.",
+      "forbidden": "Nur die Administration kann den E-Mail-Eingang verwalten.",
+      "unknown": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
     }
   }
 }

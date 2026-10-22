@@ -10,7 +10,8 @@ Maintenance triggers:
 - A second locale is added (this owner then also adds locale routing, per
   WEBAPP_TEMPLATE_SPEC.md §2.5)
 - A new top-level message namespace is introduced
-Last verified: 2026-09-20, F1b added the `DocumentKinds`, `SettlementPlatforms`,
+Last verified: 2026-10-22, decisions/0075-email-intake.md added the `MailIntake` namespace and
+`DocumentDetail.receivedByEmailFrom`. Previously 2026-09-20, F1b added the `DocumentKinds`, `SettlementPlatforms`,
 `SemanticFields`, and `IntakeSettings` namespaces (decisions/0022-intake-wiring.md), plus
 intake-related keys under the existing `DocumentDetail`, `Inbox`, `Scan`, and
 `DashboardShell.nav` namespaces. P3 added the `Billing` namespace

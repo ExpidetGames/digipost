@@ -48,6 +48,18 @@ const ServerEnv = z.object({
     .enum(["true", "false"])
     .optional()
     .transform((value) => value === "true"),
+  // E-Mail-Eingang (src/platform/inbound-mail, decisions/0075-email-intake.md): all four are
+  // optional, and without INBOUND_EMAIL_DOMAIN plus RESEND_WEBHOOK_SECRET the feature is simply
+  // off (no address shown, the webhook answers 503). RESEND_API_KEY/RESEND_WEBHOOK_SECRET are
+  // read only by src/platform/inbound-mail. INBOUND_MAIL_PROVIDER picks the adapter like
+  // AI_PROVIDER does ("resend" | "fake"; never "fake" in a real deployment).
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+  INBOUND_EMAIL_DOMAIN: z
+    .string()
+    .regex(/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/, "INBOUND_EMAIL_DOMAIN must be a bare domain such as inbox.example.de")
+    .optional(),
+  INBOUND_MAIL_PROVIDER: z.enum(["resend", "fake"]).optional(),
   SENTRY_DSN: z.url().optional(),
   // decisions/0074-sign-up-by-invitation-only.md: new accounts need a pending invitation. This
   // comma-separated list is the one exception, for the first admin of a fresh database whom

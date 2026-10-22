@@ -12,6 +12,8 @@ import "server-only";
 import { z } from "zod";
 
 import { quotaWarningEmailSubject, renderQuotaWarningEmail } from "@/modules/billing/server";
+import { NOTIFIED_REASONS } from "@/modules/mail-intake";
+import { mailIntakeNotificationSubject, renderMailIntakeNotificationEmail } from "@/modules/mail-intake/server";
 import { TIER_LIMITS, type Tier } from "@/modules/billing";
 import { DOCUMENT_KINDS } from "@/modules/intake";
 import { MATCH_TRIGGERS } from "@/modules/payments";
@@ -26,6 +28,7 @@ import {
 import { UseCaseError } from "@/persistence/use-cases/errors";
 import type { BillingUseCases, SendQuotaWarningInput } from "@/persistence/use-cases/billing-use-cases";
 import type { JobHandlers } from "@/persistence/use-cases/jobs-use-cases";
+import type { MailIntakeUseCases, ProcessInboundEmailInput, SendMailIntakeNotificationInput } from "@/persistence/use-cases/mail-intake-use-cases";
 import type { MatchPaymentsInput, MatchSettlementReportInput, PaymentsUseCases } from "@/persistence/use-cases/payments-use-cases";
 import type { WorkspaceUseCases } from "@/persistence/use-cases/workspaces-use-cases";
 import { JOB_KINDS, TransientJobError } from "@/platform/jobs";
@@ -48,6 +51,8 @@ const matchSettlementLinesPayloadSchema = z.object({ workspaceId: z.uuid(), docu
 // prefix belonged to no longer exists by the time this job runs.
 const cleanupWorkspaceStoragePayloadSchema = z.object({ prefix: z.string().min(1) });
 const purgeRejectedIntakePayloadSchema = z.object({ workspaceId: z.uuid(), documentId: z.uuid() });
+const processInboundEmailPayloadSchema = z.object({ workspaceId: z.uuid(), inboundEmailId: z.uuid() });
+const sendMailIntakeNotificationPayloadSchema = z.object({ workspaceId: z.uuid(), inboundEmailId: z.uuid(), reason: z.enum(NOTIFIED_REASONS) });
 
 export function createJobHandlers(deps: {
   documents: DocumentUseCases;
@@ -55,6 +60,7 @@ export function createJobHandlers(deps: {
   workspaces: WorkspaceUseCases;
   accounts: AccountsUseCases;
   payments: PaymentsUseCases;
+  mailIntake: MailIntakeUseCases;
   mailer: Mailer;
   objectStorage: ObjectStorage;
 }): JobHandlers {
@@ -159,6 +165,39 @@ export function createJobHandlers(deps: {
         );
         throw new TransientJobError("storage_cleanup_incomplete");
       }
+    },
+
+    // decisions/0075-email-intake.md: one received mail's attachments become documents.
+    // Idempotent - a mail that is no longer `received` is skipped, and per-attachment results
+    // stored by an earlier attempt are never redone.
+    [JOB_KINDS.processInboundEmail]: async (payload) => {
+      const input: ProcessInboundEmailInput = processInboundEmailPayloadSchema.parse(payload);
+      await deps.mailIntake.processInboundEmail(input);
+    },
+
+    // decisions/0075-email-intake.md: the admin's rejection notice. The throttle was decided
+    // when this job was enqueued; this handler only renders and sends, to whoever is admin now.
+    [JOB_KINDS.sendMailIntakeNotification]: async (payload) => {
+      const input: SendMailIntakeNotificationInput = sendMailIntakeNotificationPayloadSchema.parse(payload);
+      const [contact, details] = await Promise.all([
+        deps.workspaces.getWorkspaceWithAdminContact(input.workspaceId),
+        deps.mailIntake.getNotificationDetails(input),
+      ]);
+      if (!contact || !contact.adminEmail || !details) return;
+
+      const email = await renderMailIntakeNotificationEmail({
+        workspaceName: contact.workspace.name,
+        reason: input.reason,
+        fromAddress: details.fromAddress,
+        subject: details.subject,
+        url: `${serverEnv().APP_URL}/dashboard/email-intake`,
+      });
+      await deps.mailer.send({
+        to: contact.adminEmail,
+        subject: mailIntakeNotificationSubject(input.reason),
+        html: email.html,
+        text: email.text,
+      });
     },
 
     // F5 (decisions/0027-hardening-and-deletion.md): the retention cron's actual per-document

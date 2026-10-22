@@ -10,7 +10,8 @@ test configuration, per WEBAPP_TEMPLATE_SPEC.md §9's `env-access` rule)
 Maintenance triggers:
 - An environment variable is added, removed, or its validation changes
 - A new public (`NEXT_PUBLIC_*`) variable is introduced
-Last verified: 2026-09-20, P7 (D4, real-API defect fixes): `serverEnv()` now blanks every
+Last verified: 2026-10-22, decisions/0075-email-intake.md added the four optional
+E-Mail-Eingang variables. Previously 2026-09-20, P7 (D4, real-API defect fixes): `serverEnv()` now blanks every
 empty-string env value to `undefined` before validation (`blankStringsToUndefined`) - `cp
 .env.example .env.local` used to 500 every request, because Next.js loads an optional
 variable shipped as a blank line (`MISTRAL_OCR_MODEL=`, `SENTRY_DSN=`, ...) as `""`, which
@@ -76,6 +77,12 @@ documented in `.env.example`.
   schema stays permissive on purpose (all four optional): the provider-selection logic
   that decides between the real Mistral adapter, the fake adapter, and the
   `ai_not_configured` production failure lives in `src/platform/mistral/server`, not here.
+- `INBOUND_EMAIL_DOMAIN` (optional bare domain), `RESEND_WEBHOOK_SECRET`, `RESEND_API_KEY`
+  (optional strings), `INBOUND_MAIL_PROVIDER` (optional enum `"resend" | "fake"`) are only read
+  through `serverEnv()` by `src/platform/inbound-mail` (decisions/0075-email-intake.md,
+  `STRUCTURE.md`'s `env-access` rule for the two secrets). All optional: without the domain
+  and the secret the E-Mail-Eingang is simply off; the adapter selection lives in
+  `src/platform/inbound-mail/server`, not here.
 
 ## Tests
 

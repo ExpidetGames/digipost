@@ -46,5 +46,14 @@ export const JOB_KINDS = {
    * job-queue retry/backoff machinery as everything else, rather than the cron route doing
    * unbounded work synchronously within its own request. */
   purgeRejectedIntake: "purge-rejected-intake",
+  /** decisions/0075-email-intake.md: turns one received mail's attachments into documents
+   * (sender policy, fresh attachment listing, download, `createFromUpload` per attachment),
+   * enqueued by the `POST /api/webhooks/resend` route in the same transaction that stores the
+   * mail's log row. Idempotent: per-attachment results are stored as they happen, so a retry
+   * skips everything already handled. */
+  processInboundEmail: "process-inbound-email",
+  /** decisions/0075-email-intake.md: the admin's "a mail was rejected" e-mail, enqueued (at
+   * most once per workspace and reason per 24 hours) by the `process-inbound-email` handler. */
+  sendMailIntakeNotification: "send-mail-intake-notification",
 } as const;
 export type JobKind = (typeof JOB_KINDS)[keyof typeof JOB_KINDS];
