@@ -158,7 +158,7 @@ Digipost-specific invariants a change must not silently break:
   `contacts`/`document_contacts`/`contact_change_proposals` (owner: `src/modules/contacts`),
   `accounts`/`transactions`/`import_batches`/`settlement_lines` (owner:
   `src/modules/accounts`), and `document_transactions`/`payment_aliases`/
-  `payment_rejections`/`payment_no_document_rules` (owner: `src/modules/payments`) as to any
+  `payment_rejections`/`payment_no_document_rules`/`payment_arbiter_answers` (owner: `src/modules/payments`) as to any
   other table.
 - **Nothing is auto-deleted except one thing.** A rejected intake proposal ("Ablehnen" -
   nothing was ever imported from it) older than 30 days is the ONLY row this product ever

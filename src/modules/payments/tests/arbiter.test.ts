@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_ARBITER_CANDIDATES, arbiterCacheKey, validateArbiterResult } from "../core/arbiter";
+import { MAX_ARBITER_CANDIDATES, arbiterCacheKey, toCacheableArbiterAnswer, validateArbiterResult } from "../core/arbiter";
 import { MATCH_KINDS, type MatchableDocument, type MatchableTransaction } from "../core/types";
 
 function tx(overrides: Partial<MatchableTransaction> = {}): MatchableTransaction {
@@ -135,25 +135,88 @@ describe("validateArbiterResult", () => {
 });
 
 describe("arbiterCacheKey", () => {
+  // decisions/0077-arbiter-answer-cache.md: the key is the whole question, so any answer (also
+  // "no match") can be reused exactly as long as nothing the arbiter is given has changed.
+  const VERSION = "fake:1";
   const baseTx = tx();
+  const doc1 = doc({ id: "doc-1" });
+  const doc2 = doc({ id: "doc-2", invoiceNumber: "RE-2026-00002", openAmountCents: 20_000, totalAmountCents: 20_000 });
+  const key = (transaction: MatchableTransaction = baseTx, candidates: readonly MatchableDocument[] = [doc1, doc2], version = VERSION) => arbiterCacheKey(transaction, candidates, version);
 
-  it("is deterministic for the same transaction and candidate set", () => {
-    expect(arbiterCacheKey(baseTx, ["doc-1", "doc-2"])).toBe(arbiterCacheKey(baseTx, ["doc-1", "doc-2"]));
+  it("is deterministic for the same question", () => {
+    expect(key()).toBe(key());
+    expect(key()).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("is order-independent over candidate ids", () => {
-    expect(arbiterCacheKey(baseTx, ["doc-1", "doc-2"])).toBe(arbiterCacheKey(baseTx, ["doc-2", "doc-1"]));
+  it("is stable across copies with a different property order", () => {
+    const reorderedTx = Object.fromEntries(Object.entries(baseTx).reverse()) as MatchableTransaction;
+    const reorderedDoc = Object.fromEntries(Object.entries(doc1).reverse()) as MatchableDocument;
+    expect(key(reorderedTx, [reorderedDoc, doc2])).toBe(key());
   });
 
-  it("differs when the candidate set differs", () => {
-    expect(arbiterCacheKey(baseTx, ["doc-1"])).not.toBe(arbiterCacheKey(baseTx, ["doc-1", "doc-2"]));
+  it("is order-independent over the candidates", () => {
+    expect(key(baseTx, [doc2, doc1])).toBe(key(baseTx, [doc1, doc2]));
   });
 
-  it("differs when the transaction's amount differs", () => {
-    expect(arbiterCacheKey(baseTx, ["doc-1"])).not.toBe(arbiterCacheKey({ ...baseTx, amountCents: -9_999 }, ["doc-1"]));
+  it("treats an absent optional field like null", () => {
+    expect(key(baseTx, [{ ...doc1, referenceText: null }, doc2])).toBe(key(baseTx, [doc1, doc2]));
   });
 
-  it("differs when the remittance text differs", () => {
-    expect(arbiterCacheKey(baseTx, ["doc-1"])).not.toBe(arbiterCacheKey({ ...baseTx, remittanceText: "something else" }, ["doc-1"]));
+  it("differs when a candidate is added or dropped", () => {
+    expect(key(baseTx, [doc1])).not.toBe(key(baseTx, [doc1, doc2]));
+    expect(key(baseTx, [doc1, doc2, doc({ id: "doc-3" })])).not.toBe(key());
+  });
+
+  it("differs when a candidate is replaced by another with the same fields", () => {
+    expect(key(baseTx, [doc1, { ...doc2, id: "doc-9" }])).not.toBe(key());
+  });
+
+  it.each<[string, Partial<MatchableTransaction>]>([
+    ["id", { id: "tx-2" }],
+    ["amount", { amountCents: -9_999 }],
+    ["currency", { currency: "USD" }],
+    ["booking date", { bookingDate: "2026-09-16" }],
+    ["remittance text", { remittanceText: "something else" }],
+    ["counterparty name", { counterpartyName: "Andere GmbH" }],
+    ["counterparty IBAN", { counterpartyIban: null }],
+  ])("differs when the transaction's %s changes", (_label, change) => {
+    expect(key({ ...baseTx, ...change })).not.toBe(key());
+  });
+
+  it.each<[string, Partial<MatchableDocument>]>([
+    ["open amount (a partial payment booked elsewhere)", { openAmountCents: 4_000 }],
+    ["invoice number (a re-extraction)", { invoiceNumber: "RE-2026-00077" }],
+    ["direction (a kind correction)", { direction: "outgoing" }],
+    ["document date", { documentDate: "2026-08-01" }],
+    ["due date", { dueDate: "2026-09-30" }],
+    ["contact name", { contactName: "Andere GmbH" }],
+    ["currency", { currency: "USD" }],
+    ["reference text", { referenceText: "FACEBK *ABC" }],
+  ])("differs when a candidate's %s changes", (_label, change) => {
+    expect(key(baseTx, [{ ...doc1, ...change }, doc2])).not.toBe(key());
+  });
+
+  it("differs when the arbiter's model or prompt version changes", () => {
+    expect(key(baseTx, [doc1, doc2], "mistral:mistral-small-latest:aaaa")).not.toBe(key(baseTx, [doc1, doc2], "mistral:mistral-small-latest:bbbb"));
+    expect(key(baseTx, [doc1, doc2], "mistral:mistral-small-latest:aaaa")).not.toBe(key(baseTx, [doc1, doc2], "mistral:mistral-medium-latest:aaaa"));
+  });
+});
+
+describe("toCacheableArbiterAnswer", () => {
+  it("keeps a well-formed answer, clamping the confidence", () => {
+    expect(toCacheableArbiterAnswer({ bestDocumentId: "doc-1", confidence: 1.7, reason: "Passt." })).toEqual({ bestDocumentId: "doc-1", confidence: 1, reason: "Passt." });
+  });
+
+  it("stores a malformed answer as no pick", () => {
+    expect(toCacheableArbiterAnswer({ bestDocumentId: 7 })).toEqual({ bestDocumentId: null, confidence: 0, reason: "" });
+    expect(toCacheableArbiterAnswer(null)).toEqual({ bestDocumentId: null, confidence: 0, reason: "" });
+  });
+
+  it("validates to the same result as the live answer it was made from", () => {
+    const input = { transaction: tx(), candidates: [doc()] };
+    const live = { bestDocumentId: "doc-1", confidence: 0.83, reason: `Betrag passt. ${"x".repeat(5_000)}` };
+    expect(validateArbiterResult(toCacheableArbiterAnswer(live), input)).toEqual(validateArbiterResult(live, input));
+    const noMatch = { bestDocumentId: null, confidence: 0, reason: "Keine passt." };
+    expect(validateArbiterResult(toCacheableArbiterAnswer(noMatch), input)).toBeNull();
   });
 });

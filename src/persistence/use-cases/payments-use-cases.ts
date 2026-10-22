@@ -13,7 +13,7 @@
 // twice in a row for the same workspace: `upsertSuggestion` never overwrites an
 // already-`confirmed`/`rejected` row, `filterRejectedPairs` drops anything a human already
 // declined, and the AI stage's own cache key (`arbiterCacheKey`) skips a repeated model call
-// for the identical (transaction, candidate set) pairing.
+// for the identical question, whatever the earlier answer was (decisions/0077).
 import { normalizeIban, normalizeName } from "@/modules/contacts";
 import { parseIntakeResult } from "@/modules/documents";
 import type { SettlementPlatform } from "@/modules/intake";
@@ -50,6 +50,7 @@ import {
   resolveContactForCounterparty,
   sameCurrency,
   selectCandidateDocuments,
+  toCacheableArbiterAnswer,
   validateArbiterResult,
   type AppStorePayoutPairing,
   type AppStoreReportSummary,
@@ -62,6 +63,7 @@ import {
   type MatchSuggestion,
   type MatchTrigger,
   type PaymentArbiter,
+  type PaymentArbiterRawResult,
   type PaymentAutoConfirmMode,
   type PaymentStatus,
   type RejectedPairSet,
@@ -1053,12 +1055,25 @@ export function createPaymentsUseCases(deps: PaymentsUseCaseDeps): PaymentsUseCa
 
           // Stage 3: the AI arbiter, only when stages 1-2 found nothing at all for this tx.
           if (candidateDocs.length === 0) continue;
-          const cacheKey = arbiterCacheKey(tx, candidateDocs.map((c) => c.id));
+          // decisions/0077-arbiter-answer-cache.md: the key covers the whole question (the
+          // transaction, every candidate's fields, the arbiter's model and prompt), and an answer
+          // of ANY kind is kept, so neither a later trigger nor the six-hour follow-up asks the
+          // same question again; a new candidate or a changed field makes a new key.
+          const cacheKey = arbiterCacheKey(tx, candidateDocs, deps.paymentArbiter.version);
           const existingAi = await deps.repos.documentTransaction.findAiSuggestionForTransaction(workspaceId, tx.id);
-          if (existingAi && existingAi.arbiterCacheKey === cacheKey) continue; // identical (tx, candidate set) already asked and answered
+          if (existingAi && existingAi.arbiterCacheKey === cacheKey) continue; // this answer's suggestion is already there (or a human already decided it)
 
-          aiCalls++;
-          const raw = await deps.paymentArbiter.rank({ transaction: tx, candidates: candidateDocs });
+          const cachedAnswer = await deps.repos.paymentArbiterAnswer.findForTransaction(workspaceId, tx.id);
+          let raw: PaymentArbiterRawResult;
+          if (cachedAnswer && cachedAnswer.cacheKey === cacheKey) {
+            raw = { bestDocumentId: cachedAnswer.bestDocumentId, confidence: cachedAnswer.confidence, reason: cachedAnswer.reason };
+          } else {
+            aiCalls++;
+            raw = toCacheableArbiterAnswer(await deps.paymentArbiter.rank({ transaction: tx, candidates: candidateDocs }));
+            await deps.repos.paymentArbiterAnswer.upsert({ workspaceId, transactionId: tx.id, cacheKey, ...raw });
+          }
+          // Validated on every use, cached or fresh: the checks are code, cost nothing, and read
+          // the current data (a rejection recorded since, for example).
           const validated = validateArbiterResult(raw, { transaction: tx, candidates: candidateDocs });
           if (!validated) continue;
           const filtered = filterRejectedPairs([validated], rejectedPairs);

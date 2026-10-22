@@ -42,6 +42,14 @@ function doc(overrides: Partial<MatchableDocument> = {}): MatchableDocument {
 }
 
 describe("createMistralPaymentArbiter", () => {
+  it("names its model and prompt fingerprint in its version, so a change of either asks cached questions again (decisions/0077)", () => {
+    const small = createMistralPaymentArbiter({ apiKey: "k", model: "mistral-small-latest", fetchImpl: vi.fn() });
+    const medium = createMistralPaymentArbiter({ apiKey: "k", model: "mistral-medium-latest", fetchImpl: vi.fn() });
+    expect(small.version).toMatch(/^mistral:mistral-small-latest:[0-9a-f]{16}$/);
+    expect(small.version).toBe(createMistralPaymentArbiter({ apiKey: "other", model: "mistral-small-latest", fetchImpl: vi.fn() }).version);
+    expect(medium.version).not.toBe(small.version);
+  });
+
   it("sends temperature 0 and response_format json_object", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(chatResponse({ bestDocumentId: "doc-1", confidence: 0.9, reason: "Passt." }));
     const arbiter = createMistralPaymentArbiter({ apiKey: "k", model: "mistral-small-latest", fetchImpl });

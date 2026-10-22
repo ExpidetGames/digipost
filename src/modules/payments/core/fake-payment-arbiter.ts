@@ -17,6 +17,9 @@ import type { PaymentArbiter, PaymentArbiterInput, PaymentArbiterRawResult } fro
  */
 export function createFakePaymentArbiter(): PaymentArbiter {
   return {
+    // decisions/0077-arbiter-answer-cache.md: bump when the picking rule below changes, so cached
+    // answers of the old rule are not reused.
+    version: "fake:1",
     async rank(input: PaymentArbiterInput): Promise<PaymentArbiterRawResult> {
       const paidCents = Math.abs(input.transaction.amountCents);
       if (input.candidates.length === 0) {

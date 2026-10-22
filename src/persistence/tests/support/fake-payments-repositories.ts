@@ -1,5 +1,6 @@
 // Typed in-memory fakes for `DocumentTransactionRepository`/`PaymentAliasRepository`/
-// `PaymentRejectionRepository`/`PaymentNoDocumentRuleRepository` (WEBAPP_TEMPLATE_SPEC.md
+// `PaymentRejectionRepository`/`PaymentNoDocumentRuleRepository`/
+// `PaymentArbiterAnswerRepository` (WEBAPP_TEMPLATE_SPEC.md
 // §10.2): unit tests for `createPaymentsUseCases` inject these instead of mocking with
 // `vi.fn()`/`as never` casts.
 import type {
@@ -9,6 +10,8 @@ import type {
   DocumentTransactionWithDetails,
   PaymentAliasRepository,
   PaymentAliasRow,
+  PaymentArbiterAnswerRepository,
+  PaymentArbiterAnswerRow,
   PaymentNoDocumentRuleRepository,
   PaymentNoDocumentRuleRow,
   PaymentRejectionRepository,
@@ -227,6 +230,30 @@ export function createFakePaymentNoDocumentRuleRepository(
 
     async listForWorkspace(workspaceId) {
       return rows.filter((r) => r.workspaceId === workspaceId);
+    },
+  };
+
+  return { repo, state: rows };
+}
+
+export function createFakePaymentArbiterAnswerRepository(
+  seed: PaymentArbiterAnswerRow[] = [],
+): { repo: PaymentArbiterAnswerRepository; state: PaymentArbiterAnswerRow[] } {
+  const rows = [...seed];
+
+  const repo: PaymentArbiterAnswerRepository = {
+    async findForTransaction(workspaceId, transactionId) {
+      return rows.find((r) => r.workspaceId === workspaceId && r.transactionId === transactionId) ?? null;
+    },
+
+    async upsert(input) {
+      const existing = rows.find((r) => r.transactionId === input.transactionId);
+      if (existing) {
+        if (existing.workspaceId !== input.workspaceId) return;
+        Object.assign(existing, { cacheKey: input.cacheKey, bestDocumentId: input.bestDocumentId, confidence: input.confidence, reason: input.reason });
+        return;
+      }
+      rows.push({ id: crypto.randomUUID(), answeredAt: new Date(0), ...input });
     },
   };
 

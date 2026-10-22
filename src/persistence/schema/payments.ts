@@ -36,6 +36,15 @@
 // `src/persistence/schema/accounts.ts`) before running any of the three stages, so a
 // recurring non-invoice counterparty (e.g. a payroll provider, an internal transfer) stops
 // generating candidates/suggestions going forward without a human re-deciding it every time.
+//
+// `payment_arbiter_answers` (decisions/0077-arbiter-answer-cache.md): the AI arbiter's last
+// answer per transaction, of ANY kind ("no match", a pick, an unusable answer), keyed by
+// `arbiterCacheKey` over the full question (the transaction, every candidate's fields, the
+// arbiter's model and prompt version). `runMatching` reuses it instead of asking again while the
+// key is unchanged, and overwrites it when the question changed (`unique (transaction_id)`: one
+// row per transaction, never a growing history). Derived data, not user data: losing a row only
+// costs one more question. Removed with its transaction or its workspace (both cascade); never
+// pruned otherwise.
 import { check, index, integer, jsonb, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -72,13 +81,13 @@ export const documentTransactions = pgTable(
     explanation: text(),
     matchedBy: text({ enum: MATCHED_BY_VALUES }).notNull(),
     allocatedAmountCents: integer().notNull(),
-    // F3a's `arbiterCacheKey(tx, candidateIds)` (`@/modules/payments`), stored ONLY on a
-    // `kind: "ai"` row - `runMatching`'s own idempotency guard for the AI stage specifically
-    // (decisions/0025-payment-matching-wiring.md's "AI stage caching" section): before ever
-    // calling the arbiter for a transaction, the use case checks whether an `ai` row already
-    // exists for that transaction with this exact key (the same transaction against the same
-    // bounded candidate set) and, if so, reuses it rather than paying for (and re-prompting)
-    // a network call whose answer cannot have changed. `null` for every non-`ai` row.
+    // `arbiterCacheKey(tx, candidates, arbiterVersion)` (`@/modules/payments`), stored ONLY on a
+    // `kind: "ai"` row: the key of the arbiter question this suggestion answered
+    // (decisions/0025-payment-matching-wiring.md's "AI stage caching", widened by
+    // decisions/0077-arbiter-answer-cache.md to the whole question). `runMatching` skips a
+    // transaction whose `ai` row already carries the current key; every other answer, "no
+    // match" included, is reused from `payment_arbiter_answers` below. `null` for every non-`ai`
+    // row.
     arbiterCacheKey: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     decidedAt: timestamp({ withTimezone: true }),
@@ -145,4 +154,29 @@ export const paymentNoDocumentRules = pgTable(
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("payment_no_document_rules_workspace_name_key").on(t.workspaceId, t.counterpartyNameNormalized)],
+);
+
+export const paymentArbiterAnswers = pgTable(
+  "payment_arbiter_answers",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    workspaceId: uuid()
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    transactionId: uuid()
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    cacheKey: text().notNull(),
+    // The arbiter's raw pick, exactly as answered and NOT validated: it may name a document that
+    // was never a candidate (a hallucination `validateArbiterResult` rejects on every reuse) or
+    // one deleted since, so no foreign key and no `uuid` type. `null` means "no match".
+    bestDocumentId: text(),
+    confidence: real().notNull(),
+    reason: text().notNull(),
+    answeredAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("payment_arbiter_answers_transaction_key").on(t.transactionId),
+    index("payment_arbiter_answers_workspace_idx").on(t.workspaceId),
+  ],
 );

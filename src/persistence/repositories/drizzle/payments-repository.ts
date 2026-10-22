@@ -5,12 +5,13 @@ import { and, between, desc, eq, inArray, sql } from "drizzle-orm";
 
 import type { DbExecutor } from "@/persistence/foundation/db-types";
 import { documents } from "@/persistence/schema/documents";
-import { documentTransactions, paymentAliases, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
+import { documentTransactions, paymentAliases, paymentArbiterAnswers, paymentNoDocumentRules, paymentRejections } from "@/persistence/schema/payments";
 import { transactions } from "@/persistence/schema/accounts";
 import type {
   DocumentTransactionRepository,
   DocumentTransactionWithDetails,
   PaymentAliasRepository,
+  PaymentArbiterAnswerRepository,
   PaymentNoDocumentRuleRepository,
   PaymentRejectionRepository,
 } from "@/persistence/repositories/contracts/payments-repository";
@@ -300,5 +301,31 @@ export function createDrizzlePaymentNoDocumentRuleRepository(db: DbExecutor): Pa
     },
 
     listForWorkspace: (workspaceId) => db.select().from(paymentNoDocumentRules).where(eq(paymentNoDocumentRules.workspaceId, workspaceId)),
+  };
+}
+
+export function createDrizzlePaymentArbiterAnswerRepository(db: DbExecutor): PaymentArbiterAnswerRepository {
+  return {
+    async findForTransaction(workspaceId, transactionId) {
+      const [row] = await db
+        .select()
+        .from(paymentArbiterAnswers)
+        .where(and(eq(paymentArbiterAnswers.workspaceId, workspaceId), eq(paymentArbiterAnswers.transactionId, transactionId)))
+        .limit(1);
+      return row ?? null;
+    },
+
+    async upsert(input) {
+      await db
+        .insert(paymentArbiterAnswers)
+        .values(input)
+        .onConflictDoUpdate({
+          target: [paymentArbiterAnswers.transactionId],
+          // A transaction never changes workspace, so the conflicting row is always this
+          // workspace's own; the `where` keeps that true even for a forged transaction id.
+          set: { cacheKey: input.cacheKey, bestDocumentId: input.bestDocumentId, confidence: input.confidence, reason: input.reason, answeredAt: sql`now()` },
+          setWhere: eq(paymentArbiterAnswers.workspaceId, input.workspaceId),
+        });
+    },
   };
 }

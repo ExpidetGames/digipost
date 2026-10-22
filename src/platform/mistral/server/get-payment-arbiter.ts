@@ -29,6 +29,8 @@ function resolveMode(): PaymentArbiterMode {
 
 function createNotConfiguredPaymentArbiter(): PaymentArbiter {
   return {
+    // Never answers (every call throws), so nothing is ever cached under this version.
+    version: "not_configured",
     async rank() {
       throw new MistralRequestError(MISTRAL_ERROR_CODES.notConfigured, false, "AI provider is not configured");
     },

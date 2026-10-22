@@ -16,7 +16,16 @@ Maintenance triggers:
 - The analyzer's system prompt's own-company ("das sind wir") context format, or the
   parties/invoice JSON contract, changes (decisions/0021-extraction-direction-and-invoice-fields.md, C2)
 - The payment arbiter's prompt or JSON contract changes (decisions/0023-payment-matching.md, F3a)
-Last verified: 2026-09-23, decisions/0063-no-category-no-assignment-no-routing.md: the
+- The payment arbiter's prompt starts showing a value outside its two fingerprint samples'
+  shape (`paymentArbiterPromptFingerprint`, decisions/0077-arbiter-answer-cache.md)
+Last verified: 2026-10-22, decisions/0077-arbiter-answer-cache.md: every `PaymentArbiter` now
+names a `version`, part of `@/modules/payments`'s answer-cache key.
+`createMistralPaymentArbiter`'s is `mistral:<model>:<prompt fingerprint>`, where
+`paymentArbiterPromptFingerprint()` (`server/payment-arbiter-prompts.ts`) hashes the system
+prompt and the user prompt body rendered for two fixed samples (without the random
+`wrapUntrustedSection` delimiters), so a prompt edit or a model change asks cached questions
+again with no manual bump; the "not configured" adapter's is `not_configured`. Previously
+2026-09-23, decisions/0063-no-category-no-assignment-no-routing.md: the
 `category` field is removed from the analyzer prompt, `AnalysisResult`, `GuidedAnalysisResult`,
 and their validation - `@/persistence/repositories/contracts`'s `CATEGORY_KEYS` is gone, so
 this owner's prompts no longer reference it. Previously, 2026-09-22, wave 2 of decisions/0036-guided-extraction.md
@@ -154,12 +163,15 @@ production deploy must fail loudly, never silently simulate AI output).
 - `server/payment-arbiter-prompts.ts` - F3a's German payment-arbiter system/user prompt
   (decisions/0023-payment-matching.md): explicitly tells the model it is ranking a FIXED
   candidate list (never searching for one of its own) and that the transaction's remittance
-  text is untrusted data, never an instruction.
+  text is untrusted data, never an instruction. `paymentArbiterPromptFingerprint()` hashes
+  both prompts (decisions/0077-arbiter-answer-cache.md), so cached arbiter answers are never
+  reused across a prompt change.
 - `server/mistral-payment-arbiter.ts` - `createMistralPaymentArbiter`, the real
   `PaymentArbiter` (`@/modules/payments`'s port). Returns the RAW, unvalidated
   `PaymentArbiterRawResult` - `@/modules/payments`'s `validateArbiterResult` (not this file) is
   what turns it into a trusted `MatchSuggestion`, so every `PaymentArbiter` implementation is
-  validated identically in exactly one place.
+  validated identically in exactly one place. Its `version` (`mistral:<model>:<prompt
+  fingerprint>`) is part of every answer-cache key (decisions/0077).
 - `server/get-payment-arbiter.ts` - F3a's env-based provider selection, mirroring
   `get-ai-adapters.ts`/`get-intake-classifier.ts` exactly (`AI_PROVIDER` precedence, `globalThis`
   memoization, a "not configured" adapter in production with no key).
@@ -235,13 +247,14 @@ composition-root work is the next consumer of either.
 - `tests/mistral-payment-arbiter.test.ts` (F3a): `temperature: 0`, `response_format:
   json_object`, the candidate list and untrusted-data delimiters in the user prompt, a
   well-typed and a wrong-typed raw response, the `MAX_ARBITER_CANDIDATES` guard (no request
-  sent at all when exceeded), an empty candidate list (no request sent), and error
-  propagation.
+  sent at all when exceeded), an empty candidate list (no request sent), error
+  propagation, and (decisions/0077) a `version` naming the model and prompt fingerprint.
 - `tests/payment-arbiter-prompts.test.ts` (F3a, updated R1): the system prompt's "ranker, not
   searcher" and untrusted-remittance-text instructions, that the user prompt places the
   transaction's own remittance text inside the random-nonce `<<<INPUT-<hex> START>>>`/
   `<<<INPUT-<hex> END>>>` delimiters, and neutralization of a delimiter-shaped forgery injected
-  into the remittance text.
+  into the remittance text. decisions/0077: `paymentArbiterPromptFingerprint()` is a stable
+  16-hex-character value despite the per-call random delimiters.
 - `tests/get-payment-arbiter.test.ts` (F3a): the same env-boundary/caching pattern
   `src/platform/object-storage/tests/get-object-storage.test.ts` established - `AI_PROVIDER=fake`,
   no-key-outside-production, no-key-in-production (`ai_not_configured`), and caching across
