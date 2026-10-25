@@ -1,8 +1,8 @@
-# project.yaml – Projekt-Manifest für den Itegro-Projekt-Index (ExpidetGames/itegro-gmbh).
+# project.yaml – Projekt-Manifest für den Itegro-Projekt-Index (Itegro-GmbH/itegro-gmbh).
 
 name: Digipost
 description: "Digitaler Posteingang für KMU: Scan, OCR, KI-Kategorisierung und Zuweisung."
 
 # Weitere Repos, die zu diesem Projekt gehören.
 repos:
-  - ExpidetGames/digipost-archive
+  - Itegro-GmbH/digipost-archive
